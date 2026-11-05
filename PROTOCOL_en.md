@@ -93,7 +93,7 @@ Training data is **not generated online**. The training set is finite, because w
 | train | 0-7 999 | 8 000 | nested subsets: first 500, 2 000, 8 000 |
 | val (ID) | 100 000-100 999 | 1 000 | the only set used for checkpoint selection and tuning |
 | test ID | 200 000-200 499 | 500 | |
-| test OOD, axis *k*, level *l* | 300 000 + 10 000·(axis index) + 1 000·*l* | 500 | paired with test ID: the same drawn base parameters, only what the axis changes is altered |
+| test OOD, axis *k*, level *l* | 200 000-200 499 | 500 | paired with test ID: identical base seed and unit vector u, only axis mapping is altered |
 
 An automated test checks that the index ranges are disjoint and that the datasets are bit-for-bit reproducible.
 
@@ -103,7 +103,7 @@ OOD sets are touched **only** in the final evaluation. They are not used for che
 
 | Axis | Change | Levels (mild / moderate / severe) |
 |---|---|---|
-| A1 parameters | extrapolation of one parameter: θ_E, q, shear, source position (each separately) | exceeding the range by 25% / 50% / 100% of the range width |
+| A1 parameters | extrapolation of one parameter: θ_E (upper), q (lower), shear (both sides), source position (both sides) | exceeding the range by 25% / 50% / 100% of the range width |
 | A2 profile | slope `ψ ∝ r^s`, s ∈ [1−δ, 1+δ] | δ = 0.1 / 0.2 / 0.3 |
 | A3 substructure | additional Plummer term with amplitude b near the ring | b ∈ [0.02, 0.05] / [0.05, 0.12] / [0.12, 0.25] |
 | A4 source | 3 Gaussians instead of Sérsic | 1 level (fixed) |
@@ -232,7 +232,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 
 | Date | What changed | Reason | Impact on analysis |
 |---|---|---|---|
-| | | | |
+| 2026-11-05 | Corrected OOD seeds from 300 000+ to 200 000-200 499 in §5.3 and clarified A1 extrapolation directions in §6 | Resolved specification logic error; exact pairing requires using identical base seeds as test ID | No impact on hypotheses; strictly required for paired sample evaluation |
 
 ## 14. Reproducibility
 

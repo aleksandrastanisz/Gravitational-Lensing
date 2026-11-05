@@ -93,7 +93,7 @@ Trening **nie jest generowany online**. Zbiór treningowy jest skończony, bo pr
 | train | 0-7 999 | 8 000 | podzbiory zagnieżdżone: pierwsze 500, 2 000, 8 000 |
 | val (ID) | 100 000-100 999 | 1 000 | jedyny zbiór do wyboru checkpointu i strojenia |
 | test ID | 200 000-200 499 | 500 | |
-| test OOD, oś *k*, poziom *l* | 300 000 + 10 000·(indeks osi) + 1 000·*l* | 500 | zbiory sparowane z test ID: te same wylosowane parametry bazowe, zmienia się tylko to, co oś zmienia |
+| test OOD, oś *k*, poziom *l* | 200 000-200 499 | 500 | zbiory sparowane z test ID: ten sam seed bazowy i wektor losowań u, zmienia się tylko odwzorowanie osi |
 
 Test automatyczny sprawdza rozłączność indeksów i odtwarzalność bitową zbiorów.
 
@@ -103,7 +103,7 @@ Zbiory OOD są dotykane **tylko** w ostatecznej ewaluacji. Nie służą do wybor
 
 | Oś | Zmiana | Poziomy (łagodny / umiarkowany / silny) |
 |---|---|---|
-| A1 parametry | ekstrapolacja jednego parametru: θ_E, q, shear, pozycja źródła (każdy osobno) | wyjście poza zakres o 25% / 50% / 100% szerokości zakresu |
+| A1 parametry | ekstrapolacja jednego parametru: θ_E (w górę), q (w dół), shear (obustronnie), pozycja źródła (obustronnie) | wyjście poza zakres o 25% / 50% / 100% szerokości zakresu |
 | A2 profil | nachylenie `ψ ∝ r^s`, s ∈ [1−δ, 1+δ] | δ = 0.1 / 0.2 / 0.3 |
 | A3 substruktura | dodatkowy człon Plummera o amplitudzie b przy pierścieniu | b ∈ [0.02, 0.05] / [0.05, 0.12] / [0.12, 0.25] |
 | A4 źródło | 3 gaussy zamiast Sérsica | 1 poziom (stały) |
@@ -232,7 +232,7 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 
 | Data | Co zmieniono | Powód | Wpływ na analizę |
 |---|---|---|---|
-| | | | |
+| 2026-11-05 | Korekta seedów OOD z 300 000+ na 200 000-200 499 w §5.3 oraz uściślenie kierunków ekstrapolacji A1 w §6 | Usunięcie błędu logicznego w specyfikacji; parowanie wymaga identycznego seeda bazowego co test ID | Brak wpływu na hipotezy; warunek konieczny do fizycznego parowania próbek |
 
 ## 14. Reprodukowalność
 
