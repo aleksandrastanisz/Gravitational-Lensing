@@ -30,6 +30,7 @@ class SimulationConfig:
     src_pos_bound: float
     q_src_min: float
     q_src_max: float
+    plummer_scale: float
 
     @classmethod
     def from_yaml(cls, path: str | Path = "configs/prior.yaml") -> "SimulationConfig":
