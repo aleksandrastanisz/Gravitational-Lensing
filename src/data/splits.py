@@ -1,0 +1,4 @@
+TRAIN = range(0, 8_000)
+VAL = range(100_000, 101_000)
+TEST = range(200_000, 200_500)
+N_TEST = 500
