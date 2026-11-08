@@ -106,9 +106,9 @@ Zbiory OOD są dotykane **tylko** w ostatecznej ewaluacji. Nie służą do wybor
 | A1 parametry | ekstrapolacja jednego parametru: θ_E (w górę), q (w dół), shear (obustronnie), pozycja źródła (obustronnie) | wyjście poza zakres o 25% / 50% / 100% szerokości zakresu |
 | A2 profil | nachylenie `ψ ∝ r^s`, s ∈ [1−δ, 1+δ] | δ = 0.1 / 0.2 / 0.3 |
 | A3 substruktura | dodatkowy człon Plummera o amplitudzie b przy pierścieniu | b ∈ [0.02, 0.05] / [0.05, 0.12] / [0.12, 0.25] |
-| A4 źródło | 3 gaussy zamiast Sérsica | 1 poziom (stały) |
+| A4 źródło | 3 gaussy zamiast Sérsica | 1 poziom (stały, wchodzi do E1) |
 | A5 szum | `σ₀` poza zakresem treningowym | 0.005 / 0.05 / 0.08 |
-| A6 operator | `A_truth` z PSF 0.12″ zamiast 0.10″ (niedopasowanie do `A_model`) | PSF 0.12 / 0.15 |
+| A6 operator | A_truth z PSF 0.12″ zamiast 0.10″ (niedopasowanie do A_model) | PSF 0.12″ (umiarkowany / L1, wchodzi do E1) / 0.15″ (silny / L2) |
 
 Dla każdej osi raportujemy krzywą dawka-odpowiedź (metryka vs poziom), a nie pojedynczy punkt.
 
@@ -194,7 +194,7 @@ d[s,a] = log m[V3,s,a] − log m[V0,s,a]        (ujemne = V3 lepszy)
 ```
 E1[s] = średnia po osiach OOD a ∈ {A1..A6, poziom umiarkowany} z d[s,a]
 ```
-
+Dla A4 przyjmuje się jedyny dostępny poziom; dla A6 poziom umiarkowany odpowiada L1 (PSF 0.12″).
 Dla N = 2 000 (rozmiar odniesienia). H1 uznajemy za poparte, gdy jednocześnie:
 1. średnia `E1[s]` po seedach `≤ log(0.95)` (poprawa co najmniej 5%),
 2. 95% przedział ufności dla średniej (rozkład t, 4 stopnie swobody) nie zawiera 0,
@@ -233,6 +233,7 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | Data | Co zmieniono | Powód | Wpływ na analizę |
 |---|---|---|---|
 | 2026-11-05 | Korekta seedów OOD z 300 000+ na 200 000-200 499 w §5.3 oraz uściślenie kierunków ekstrapolacji A1 w §6 | Usunięcie błędu logicznego w specyfikacji; parowanie wymaga identycznego seeda bazowego co test ID | Brak wpływu na hipotezy; warunek konieczny do fizycznego parowania próbek |
+| 2026-11-08 | Uściślenie mapowania poziomu umiarkowanego dla A4 (stały) i A6 (L1: PSF 0.12″) w §6 i §10 | Usunięcie niejednoznaczności w definicji E1 dla osi o niestandardowej liczbie poziomów | Brak wpływu na hipotezy; uściślenie formalne przed uruchomieniem treningów |
 
 ## 14. Reprodukowalność
 

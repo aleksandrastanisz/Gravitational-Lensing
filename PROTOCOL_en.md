@@ -106,9 +106,9 @@ OOD sets are touched **only** in the final evaluation. They are not used for che
 | A1 parameters | extrapolation of one parameter: θ_E (upper), q (lower), shear (both sides), source position (both sides) | exceeding the range by 25% / 50% / 100% of the range width |
 | A2 profile | slope `ψ ∝ r^s`, s ∈ [1−δ, 1+δ] | δ = 0.1 / 0.2 / 0.3 |
 | A3 substructure | additional Plummer term with amplitude b near the ring | b ∈ [0.02, 0.05] / [0.05, 0.12] / [0.12, 0.25] |
-| A4 source | 3 Gaussians instead of Sérsic | 1 level (fixed) |
+| A4 source | 3 Gaussians instead of Sérsic | 1 level (fixed, enters E1) |
 | A5 noise | `σ₀` outside the training range | 0.005 / 0.05 / 0.08 |
-| A6 operator | `A_truth` with PSF 0.12″ instead of 0.10″ (mismatch with `A_model`) | PSF 0.12 / 0.15 |
+| A6 operator | A_truth with PSF 0.12″ instead of 0.10″ (mismatch with A_model) | PSF 0.12″ (moderate / L1, enters E1) / 0.15″ (severe / L2) |
 
 For each axis we report a dose–response curve (metric vs level), not a single point.
 
@@ -194,7 +194,7 @@ d[s,a] = log m[V3,s,a] − log m[V0,s,a]        (negative = V3 better)
 ```
 E1[s] = mean over OOD axes a ∈ {A1..A6, moderate level} of d[s,a]
 ```
-
+For A4, the single fixed level is used; for A6, the moderate level corresponds to L1 (PSF 0.12″).
 For N = 2 000 (reference size). H1 is considered supported when all of the following hold:
 1. the mean of `E1[s]` over seeds is `≤ log(0.95)` (an improvement of at least 5%),
 2. the 95% confidence interval for the mean (t distribution, 4 degrees of freedom) does not contain 0,
@@ -233,6 +233,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | Date | What changed | Reason | Impact on analysis |
 |---|---|---|---|
 | 2026-11-05 | Corrected OOD seeds from 300 000+ to 200 000-200 499 in §5.3 and clarified A1 extrapolation directions in §6 | Resolved specification logic error; exact pairing requires using identical base seeds as test ID | No impact on hypotheses; strictly required for paired sample evaluation |
+| 2026-11-08 | Clarified moderate level mapping for A4 (fixed) and A6 (L1: PSF 0.12″) in §6 and §10 | Resolved ambiguity in composite endpoint E1 for axes with non-standard level counts | No impact on hypotheses; formalized prior to training runs |
 
 ## 14. Reproducibility
 
