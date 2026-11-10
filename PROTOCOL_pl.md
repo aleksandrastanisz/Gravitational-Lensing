@@ -21,7 +21,7 @@ Nie pytamy o szybkość ani o porównanie z dopasowaniem parametrycznym. Interes
 | Symbol | Definicja | Uwagi |
 |---|---|---|
 | `L_sup` | `relL2(źródło) + 2·relL2(α)`, gdzie `α = ∇ψ` (różnice centralne) | ψ jest nadzorowane tylko przez α, więc stała w ψ jest swobodna |
-| `L_ray` | średnia odporna wartość `pull²`, `pull = (I_rekonstr − I_obs)/σ̂`, I_rekonstr = ray-tracing przewidzianego źródła i ψ | σ̂ szacowana z obserwacji (`noise.py`), nie z czystego obrazu; pseudo-Huber z c = 10 |
+| `L_ray` | średnia odporna wartość pullu: `2c²·(√(1 + (pull/c)²) − 1)`, gdzie `pull = (I_rekonstr − I_obs)/σ̂`, `c = 10` | σ̂ szacowana z obserwacji (`noise.py`), nie z czystego obrazu; asymptotyka `pull²` dla małych wartości i `2c·\|pull\|` dla anomalii |
 | `L_pos` | średnia `ReLU(−κ)²`, `κ = ½∇²ψ`, wnętrze siatki bez 2 pikseli brzegu | **κ ≥ 0 jest własnością całej rodziny danych (w tym wszystkich osi OOD), więc więzy są poprawne, ale zgodne z generatorem** (§11) |
 
 **Warianty** (jedna architektura, jeden dataset, jedna procedura):
@@ -118,7 +118,7 @@ Dla każdej osi raportujemy krzywą dawka-odpowiedź (metryka vs poziom), a nie 
 - **Architektura (kontrolna, S2):** U-Net/CNN o zbliżonej liczbie parametrów, tylko V0 i V3 przy N = 2 000. Sprawdza, czy wnioski nie dotyczą wyłącznie FNO.
 - **Budżet:** stała liczba kroków optymalizatora dla wszystkich N (12 500 kroków, batch 16; dla N = 8 000 odpowiada to ok. 25 epokom). Mniejsze N oznaczają więcej epok.
 - **Optymalizator:** AdamW + OneCycleLR (parametry strojone w §7.1).
-- **Rozgrzewka członów fizycznych:** 0 przez 3 epoki (liczone w N = 8 000), potem liniowo przez 3 epoki, w jednostkach kroków.
+- **Rozgrzewka członów fizycznych:** `warm(step) = clip((step − 1500) / 1500, 0, 1)`, co odpowiada 0 przez pierwsze 1 500 kroków (3 epoki przy bazowym N = 8 000, batch 16) i liniowemu wzrostowi do 1.0 w krokach 1 500–3 000 dla wszystkich N.
 - **Seedy:** 5 seedów ewaluacyjnych (42-46). Seed steruje inicjalizacją i kolejnością danych. Ten sam seed daje tę samą inicjalizację we wszystkich wariantach (porównanie sparowane).
 - **Wybór checkpointu:** wspólne kryterium dla wszystkich wariantów, `val_select = relL2(źródło) + 2·relL2(α)` na val (ID). Człony `L_ray` i `L_pos` nie wchodzą do kryterium.
 
@@ -234,6 +234,7 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 |---|---|---|---|
 | 2026-11-05 | Korekta seedów OOD z 300 000+ na 200 000-200 499 w §5.3 oraz uściślenie kierunków ekstrapolacji A1 w §6 | Usunięcie błędu logicznego w specyfikacji; parowanie wymaga identycznego seeda bazowego co test ID | Brak wpływu na hipotezy; warunek konieczny do fizycznego parowania próbek |
 | 2026-11-08 | Uściślenie mapowania poziomu umiarkowanego dla A4 (stały) i A6 (L1: PSF 0.12″) w §6 i §10 | Usunięcie niejednoznaczności w definicji E1 dla osi o niestandardowej liczbie poziomów | Brak wpływu na hipotezy; uściślenie formalne przed uruchomieniem treningów |
+| 2026-11-10 | Doprecyzowanie wzoru pseudo-Hubera w §2 oraz jawny wzór funkcji rozgrzewki w §7 | Usunięcie niejednoznaczności zapisu (Huber na pull ze skalowaniem 2c²; kroki rozgrzewki stałe względem N) | Zachowanie skali λ_ray zgodnej z clamp(max=100); deterministyczny harmonogram optymalizatora |
 
 ## 14. Reprodukowalność
 

@@ -21,7 +21,7 @@ We do not ask about speed or about comparison with parametric fitting. We study 
 | Symbol | Definition | Notes |
 |---|---|---|
 | `L_sup` | `relL2(source) + 2·relL2(α)`, where `α = ∇ψ` (central differences) | ψ is supervised only through α, so the constant in ψ is free |
-| `L_ray` | mean robust value of `pull²`, `pull = (I_recon − I_obs)/σ̂`, where I_recon = ray tracing of the predicted source and ψ | σ̂ is estimated from the observation (`noise.py`), not from the clean image; pseudo-Huber with c = 10 |
+| `L_ray` | mean robust pull: `2c²·(√(1 + (pull/c)²) − 1)`, where `pull = (I_recon − I_obs)/σ̂`, `c = 10` | σ̂ estimated from observation (`noise.py`), not clean image; asymptotic `pull²` for small values and `2c·\|pull\|` for outliers |
 | `L_pos` | mean `ReLU(−κ)²`, `κ = ½∇²ψ`, grid interior excluding a 2-pixel border | **κ ≥ 0 holds for the entire data family (including all OOD axes), so the constraint is correct but consistent with the generator** (§11) |
 
 **Variants** (one architecture, one dataset, one procedure):
@@ -118,7 +118,7 @@ For each axis we report a dose–response curve (metric vs level), not a single 
 - **Architecture (control, S2):** U-Net/CNN with a comparable number of parameters, V0 and V3 only, at N = 2 000. Checks whether the conclusions are specific to FNO.
 - **Budget:** fixed number of optimizer steps for all N (12 500 steps, batch 16; for N = 8 000 this corresponds to about 25 epochs). Smaller N means more epochs.
 - **Optimizer:** AdamW + OneCycleLR (parameters tuned in §7.1).
-- **Warm-up of the physical terms:** 0 for 3 epochs (counted at N = 8 000), then linear over 3 epochs, in units of steps.
+- **Warm-up of physical terms:** `warm(step) = clip((step − 1500) / 1500, 0, 1)`, corresponding to 0 for the first 1,500 steps (3 epochs at base N = 8,000, batch 16) and a linear ramp to 1.0 over steps 1,500–3,000 across all N.
 - **Seeds:** 5 evaluation seeds (42-46). The seed controls initialization and data order. The same seed gives the same initialization in all variants (paired comparison).
 - **Checkpoint selection:** one common criterion for all variants, `val_select = relL2(source) + 2·relL2(α)` on val (ID). The `L_ray` and `L_pos` terms do not enter the criterion.
 
@@ -234,6 +234,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 |---|---|---|---|
 | 2026-11-05 | Corrected OOD seeds from 300 000+ to 200 000-200 499 in §5.3 and clarified A1 extrapolation directions in §6 | Resolved specification logic error; exact pairing requires using identical base seeds as test ID | No impact on hypotheses; strictly required for paired sample evaluation |
 | 2026-11-08 | Clarified moderate level mapping for A4 (fixed) and A6 (L1: PSF 0.12″) in §6 and §10 | Resolved ambiguity in composite endpoint E1 for axes with non-standard level counts | No impact on hypotheses; formalized prior to training runs |
+| 2026-11-10 | Clarified pseudo-Huber formulation in §2 and explicit warm-up schedule formula in §7 | Resolved ambiguity in loss specification (Huber on pull scaled by 2c²; fixed step-based warmup across all N) | Preserves λ_ray scale consistency with clamp(max=100); deterministic optimizer schedule |
 
 ## 14. Reproducibility
 
