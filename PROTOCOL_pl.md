@@ -235,6 +235,8 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | 2026-11-05 | Korekta seedów OOD z 300 000+ na 200 000-200 499 w §5.3 oraz uściślenie kierunków ekstrapolacji A1 w §6 | Usunięcie błędu logicznego w specyfikacji; parowanie wymaga identycznego seeda bazowego co test ID | Brak wpływu na hipotezy; warunek konieczny do fizycznego parowania próbek |
 | 2026-11-08 | Uściślenie mapowania poziomu umiarkowanego dla A4 (stały) i A6 (L1: PSF 0.12″) w §6 i §10 | Usunięcie niejednoznaczności w definicji E1 dla osi o niestandardowej liczbie poziomów | Brak wpływu na hipotezy; uściślenie formalne przed uruchomieniem treningów |
 | 2026-11-10 | Doprecyzowanie wzoru pseudo-Hubera w §2 oraz jawny wzór funkcji rozgrzewki w §7 | Usunięcie niejednoznaczności zapisu (Huber na pull ze skalowaniem 2c²; kroki rozgrzewki stałe względem N) | Zachowanie skali λ_ray zgodnej z clamp(max=100); deterministyczny harmonogram optymalizatora |
+| 2026-11-11 | Przepisanie `SpectralConv2d` (wagi w układzie `[m1·m2, in, out]`; `modes`, `width`, `pad_ratio` bez zmian) | Mniej kopii pamięci i przyspieszenie przez `torch.bmm` | Brak; ta sama funkcja matematyczna, równoważność wyjścia i gradientów potwierdzona testem |
+| 2026-11-11 | Korekta szacunku czasu w §15 pkt 1 | Profiler i smoke test wykazały ~0.32 s/krok (~72 min/trening zamiast <8 min; łącznie ~116 h na GTX 1660) | Brak; dotyczy planu obliczeń, nie hipotez, reguł decyzyjnych ani metryk |
 
 ## 14. Reprodukowalność
 
@@ -242,10 +244,11 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 - Zbiory zapisane na dysku z sumą kontrolną. Testy: rozłączność, odtwarzalność, zgodność siatek `A_truth` / `A_model`.
 - `scripts/make_tables.py` odtwarza każdą tabelę i rysunek z zapisanych checkpointów, bez ręcznych kroków.
 - Dla każdego checkpointu zapisujemy: wariant, N, seed, konfigurację, `val_select` i numer epoki.
+- Wagi warstwy `SpectralConv2d` są spłaszczone do kształtu `(modes1 * modes2, in_channels, out_channels)` pod akcelerację obliczeń przez `torch.bmm` zamiast operacji `einsum` (równoważne numerycznie, inny format kluczy w `state_dict`).
 
 ## 15. Rozstrzygnięcia decyzji (stan zamrożony)
 
-1. **Liczba seedów:** Utrzymujemy 5 seedów (42–46) i pełną macierz 60 treningów w E-main. Pojedynczy trening FNO przy 12 500 krokach na karcie GTX 1660 zajmuje poniżej 8 minut, co daje łącznie około 7–8 godzin obliczeń. Pięć seedów zapewnia 4 stopnie swobody w teście t-Studenta ($t_{0.05} = 2.776$), chroniąc analizę przed nadmiernie szerokimi przedziałami ufności typowymi dla 3 seedów.
+1. **Liczba seedów i wykonalność obliczeniowa:** Utrzymujemy 5 seedów (42–46) i pełną macierz 60 treningów w E-main. Pojedynczy trening FNO przy 12 500 krokach na karcie GTX 1660 zajmuje około 72 minut (~0.32 s/krok wraz z ewaluacją co 500 kroków), co daje łącznie około 72 godzin obliczeń dla E-main (~116 godzin z fazą 36 przebiegów strojenia). Pięć seedów zapewnia 4 stopnie swobody w teście t-Studenta ($t_{0.05} = 2.776$), chroniąc analizę przed nadmiernie szerokimi przedziałami ufności typowymi dla 3 seedów.
 2. **Progi istotności:** Zatwierdzamy próg poprawy $\ge 5\%$ ($\log \le -0.051$) oraz próg nie-pogorszenia $\le 5\%$ ($\log \le +0.049$). W obszarze pierścienia Einsteina różnica 5% w błędzie kąta ugięcia odpowiada fizycznie przesunięciom kaustyk o kilka milisekund łuku, co stanowi próg istotny astrofizycznie i leżący powyżej szumu samej dyskretyzacji.
 3. **Agregacja osi A1:** Oś A1 wchodzi do głównego punktu końcowego E1 jako pojedyncza oś, liczona jako średnia arytmetyczna z logarytmicznych ilorazów dla jej czterech podosi: $\theta_E$, $q$, $\gamma$ oraz położenia źródła. Zapobiega to sytuacji, w której ekstrapolacja granic generatora dominuje nad strukturalnymi osiami OOD (substruktury, profil, operator).
 4. **Oś z masą ujemną $\kappa < 0$:** Dodajemy oś kontrolną z profilem o lokalnie ujemnej gęstości masy, lecz traktujemy ją wyłącznie jako osobną analizę czułości poza głównym punktem końcowym E1. Pozwala to jawnie wykazać w dyskusji ewentualny bias wprowadzany przez człon $L_{\mathrm{pos}}$ przy złamaniu założeń generatora, bez zniekształcania konfirmacyjnego testu hipotezy H1.

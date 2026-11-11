@@ -235,6 +235,8 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-05 | Corrected OOD seeds from 300 000+ to 200 000-200 499 in §5.3 and clarified A1 extrapolation directions in §6 | Resolved specification logic error; exact pairing requires using identical base seeds as test ID | No impact on hypotheses; strictly required for paired sample evaluation |
 | 2026-11-08 | Clarified moderate level mapping for A4 (fixed) and A6 (L1: PSF 0.12″) in §6 and §10 | Resolved ambiguity in composite endpoint E1 for axes with non-standard level counts | No impact on hypotheses; formalized prior to training runs |
 | 2026-11-10 | Clarified pseudo-Huber formulation in §2 and explicit warm-up schedule formula in §7 | Resolved ambiguity in loss specification (Huber on pull scaled by 2c²; fixed step-based warmup across all N) | Preserves λ_ray scale consistency with clamp(max=100); deterministic optimizer schedule |
+| 2026-11-11 | Refactored `SpectralConv2d` (weights reshaped to `[m1·m2, in, out]`; `modes`, `width`, `pad_ratio` unchanged) | Fewer memory copies and execution speedup via `torch.bmm` | None; identical mathematical function, forward and gradient equivalence verified by test |
+| 2026-11-11 | Runtime estimate correction in §15 item 1 | Profiling and smoke tests measured ~0.32 s/step (~72 min/run instead of <8 min; ~116 h total on GTX 1660) | None; concerns computational schedule only, not hypotheses, decision rules, or metrics |
 
 ## 14. Reproducibility
 
@@ -242,10 +244,11 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 - Datasets stored on disk with a checksum. Tests: disjointness, reproducibility, agreement of the `A_truth` / `A_model` grids.
 - `scripts/make_tables.py` reproduces every table and figure from the stored checkpoints, with no manual steps.
 - For each checkpoint we record: variant, N, seed, configuration, `val_select` and epoch number.
+- Weights in `SpectralConv2d` are flattened to shape `(modes1 * modes2, in_channels, out_channels)` for computational acceleration via `torch.bmm` instead of `einsum` (numerically equivalent, distinct `state_dict` key layout).
 
 ## 15. Decisions Prior to Freezing (Resolved)
 
-1. **Seed count and compute feasibility:** Confirmed 5 seeds (42–46) and 60 training runs in E-main. On an NVIDIA GTX 1660, training requires ~7–8 hours total. 5 seeds provide 4 degrees of freedom in the t-distribution ($t_{0.05} = 2.776$), ensuring statistical power.
+1. **Seed count and compute feasibility:** Confirmed 5 seeds (42–46) and 60 training runs in E-main. On an NVIDIA GTX 1660, a single training run takes ~72 minutes (~0.32 s/step including evaluations every 500 steps), requiring ~72 hours total for E-main (~116 hours including the 36-run tuning phase). 5 seeds provide 4 degrees of freedom in the t-distribution ($t_{0.05} = 2.776$), ensuring statistical power.
 2. **Significance thresholds:** The 5% improvement threshold (`ln ≤ -0.051`) and 5% non-inferiority bound (`ln ≤ +0.049`) in §10 are frozen.
 3. **Axis A1 aggregation:** Axis A1 enters composite endpoint E1 as a single aggregated axis (unweighted mean of its four constituent parameter sweeps).
 4. **Negative mass axis (κ < 0):** Added strictly as a standalone diagnostic control outside E1 to assess model behavior under violated prior assumptions.
