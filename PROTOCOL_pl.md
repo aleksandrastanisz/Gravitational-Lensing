@@ -142,7 +142,7 @@ Wszystkie liczone **per próbka** (nie jako średnie z batchy), na siatce 128×1
 
 | ID | Definicja |
 |---|---|
-| M1 | `relL2(α)` w pasie `|r_ell − θ_E| < 0.5″` (elipsa o parametrach prawdziwej soczewki) |
+| M1 | `relL2(α)` w pasie `\|r_ell − θ_E\| < 0.5″` (elipsa o parametrach prawdziwej soczewki) |
 | M2 | `relL2(źródło)` w aperturze R = 1.0″ wokół prawdziwego środka źródła |
 
 **Pomocnicze (neutralne):**
@@ -237,6 +237,7 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | 2026-11-10 | Doprecyzowanie wzoru pseudo-Hubera w §2 oraz jawny wzór funkcji rozgrzewki w §7 | Usunięcie niejednoznaczności zapisu (Huber na pull ze skalowaniem 2c²; kroki rozgrzewki stałe względem N) | Zachowanie skali λ_ray zgodnej z clamp(max=100); deterministyczny harmonogram optymalizatora |
 | 2026-11-11 | Przepisanie `SpectralConv2d` (wagi w układzie `[m1·m2, in, out]`; `modes`, `width`, `pad_ratio` bez zmian) | Mniej kopii pamięci i przyspieszenie przez `torch.bmm` | Brak; ta sama funkcja matematyczna, równoważność wyjścia i gradientów potwierdzona testem |
 | 2026-11-11 | Korekta szacunku czasu w §15 pkt 1 | Profiler i smoke test wykazały ~0.32 s/krok (~72 min/trening zamiast <8 min; łącznie ~116 h na GTX 1660) | Brak; dotyczy planu obliczeń, nie hipotez, reguł decyzyjnych ani metryk |
+| 2026-11-12 | Poprawa zapisu modułu w §8 (wiersz M1) | Dodanie ukośników przy pionowych kreskach (`\|r_ell − θ_E\|`), żeby nie rozbijało tabeli w Markdownie | Brak; poprawka formatowania |
 
 ## 14. Reprodukowalność
 

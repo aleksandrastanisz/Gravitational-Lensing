@@ -142,7 +142,7 @@ All computed **per sample** (not as averages of batch means), on the 128×128 gr
 
 | ID | Definition |
 |---|---|
-| M1 | `relL2(α)` in the band `|r_ell − θ_E| < 0.5″` (ellipse with the true lens parameters) |
+| M1 | `relL2(α)` in the band `\|r_ell − θ_E\| < 0.5″` (ellipse with the true lens parameters) |
 | M2 | `relL2(source)` in an aperture of R = 1.0″ around the true source centre |
 
 **Auxiliary (neutral):**
@@ -237,6 +237,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-10 | Clarified pseudo-Huber formulation in §2 and explicit warm-up schedule formula in §7 | Resolved ambiguity in loss specification (Huber on pull scaled by 2c²; fixed step-based warmup across all N) | Preserves λ_ray scale consistency with clamp(max=100); deterministic optimizer schedule |
 | 2026-11-11 | Refactored `SpectralConv2d` (weights reshaped to `[m1·m2, in, out]`; `modes`, `width`, `pad_ratio` unchanged) | Fewer memory copies and execution speedup via `torch.bmm` | None; identical mathematical function, forward and gradient equivalence verified by test |
 | 2026-11-11 | Runtime estimate correction in §15 item 1 | Profiling and smoke tests measured ~0.32 s/step (~72 min/run instead of <8 min; ~116 h total on GTX 1660) | None; concerns computational schedule only, not hypotheses, decision rules, or metrics |
+| 2026-11-12 | Fixed pipe characters in §8 (M1 row) | Added backslashes before vertical bars (`\|r_ell − θ_E\|`) to prevent Markdown table splitting | None; formatting fix only |
 
 ## 14. Reproducibility
 
