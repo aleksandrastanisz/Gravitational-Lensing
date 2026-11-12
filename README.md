@@ -22,7 +22,7 @@ Decision rules, thresholds and the statistical procedure are fixed in §10 of th
 
 ## Scope
 
-Synthetic data only: an SIE lens with external shear and a Sérsic source, observed after lens-light subtraction, on a 128×128 grid (±3″, pixel 47.2 mas) with a Gaussian PSF of FWHM 0.10″ and Poisson plus background noise. Conclusions do not extend to real data, other lens families or other loss functions (protocol §12).
+Synthetic data only: an isothermal elliptical-potential lens with external shear and a Sérsic source, with no lens-galaxy light, on a 128×128 grid (±3″, pixel 47.2 mas) with a Gaussian PSF of FWHM 0.10″ and Poisson plus background noise. Conclusions do not extend to real data, other lens families or other loss functions (protocol §12).
 
 ## Data and operators
 

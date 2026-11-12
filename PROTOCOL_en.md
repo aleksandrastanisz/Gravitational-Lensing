@@ -76,7 +76,7 @@ Observations are never generated with the operator used in the loss. This rules 
 | lens position x₀, y₀ | −0.1-0.1 |
 | shear γ₁, γ₂ | −0.08-0.08 |
 | lens angle | 0-π |
-| profile slope s | 1.0 (SIE with core 0.05) |
+| profile slope s | 1.0 (isothermal elliptical potential `ψ = θ_E·r_ell`, core 0.05; not an elliptical mass distribution) |
 | Sérsic source: amp | 0.8-1.5 |
 | r_eff | 0.15-0.35 |
 | n | 0.8-2.5 |
@@ -155,7 +155,7 @@ All computed **per sample** (not as averages of batch means), on the 128×128 gr
 | ID | Definition |
 |---|---|
 | M1 | `relL2(α)` in the band `\|r_ell − θ_E\| < 0.5″` (ellipse with the true lens parameters) |
-| M2 | `relL2(source)` in an aperture of R = 1.0″ around the true source centre |
+| M2 | `relL2(source)` in an aperture of R = 1.0″ around the true source centre (for high Sérsic n the central peak reaches up to ~100× the brightness at r_eff, so M2 is dominated by the central pixels) |
 
 **Auxiliary (neutral):**
 
@@ -235,10 +235,13 @@ For N = 2 000 (reference size). H1 is considered supported when all of the follo
 | Few seeds | 5 seeds; Student-t intervals show the uncertainty; no conclusions drawn from differences within the seed spread |
 | Hidden dependencies: constant, mass-sheet | §3; M1b as a control |
 | Finite training set vs online stream | Deliberate (§5.3); checking an online stream is out of scope |
+| Hyperparameters tuned only at N = 2 000 | Stated as a limitation of H2: the dependence of the effect on N may partly reflect λ, lr and wd being less well matched at N = 500 and 8 000 |
+| Labelled validation set larger than the smallest training set | Checkpoint selection uses 1 000 labelled samples for every N; conclusions about scarce data concern the training set only (§12) |
+| Physics terms acting as generic regularizers | The network overfits strongly (first tuning run: training `L_sup` 0.144 vs `val_select` 0.506), so a gain of V3 may reflect regularization in general rather than physics; the design does not separate the two. Stated in the discussion; V0 has its weight decay tuned (§7.1) |
 
 ## 12. Scope of conclusions
 
-Conclusions concern: synthetic data from the family in §5.2, the six axes in §6, FNO and U-Net architectures, five seeds. They **do not concern** real data, other lens families or other loss functions. Label-free training (V4) is an exploration, not a result.
+Conclusions concern: synthetic data from the family in §5.2, the six axes in §6, FNO and U-Net architectures, five seeds. They **do not concern** real data, other lens families or other loss functions. Label-free training (V4) is an exploration, not a result. The lens is an elliptical potential, not an elliptical mass distribution: its isodensity contours become dumbbell-shaped at low q, notably on the A1 q axis (down to q ≈ 0.47); κ stays positive. Images contain no lens-galaxy light. "Little training data" refers to the training set only: checkpoint selection always uses 1 000 labelled validation samples.
 
 ## 13. Deviations log (changes after freezing)
 
@@ -260,6 +263,10 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-12 | Descriptive clarifications in §5.1, §5.2, §7, §11 and §14: operator difference, `extent` as half-width, source angle range, network input and output, OneCycleLR defaults, gradient clipping at 1.0, dropped incomplete batch, evaluation every 500 steps, logging of step and reference epoch, GPU non-determinism | The text did not describe what the code does | None; descriptive only |
 | 2026-11-12 | Wording of §15 item 3 aligned with the Polish version (mean of log-ratios d) | Language versions disagreed in precision | None |
 | 2026-11-12 | Added the Zenodo DOI of the archived protocol to §14 | Public, immutable timestamp of the frozen protocol | None |
+| 2026-11-12 | Lens model renamed from "SIE" to isothermal elliptical potential in §5.2; consequences added to §12 | The text misnamed the model implemented in `profiles.py`; code and data unchanged | None on results; limits the astrophysical interpretation, especially of the A1 q axis |
+| 2026-11-12 | Three threats added to §11 (tuning only at N = 2 000, labelled validation set, physics terms as generic regularizers); note on M2 in §8 | Methodological review after the first completed tuning run (V0, lr 3e-4, wd 1e-4) | None on decision rules; limits interpretation of H1 and H2 |
+| 2026-11-12 | Disclosure: test-ID seeds 200 000–200 149 were used without any model in `tests/test_data.py` and `scripts/check_chi2_truth.py` while developing the σ̂ estimator used in `L_ray`; smoke tests used seed 42 and the validation set | Transparency | Negligible; no model was evaluated on any test set before the final evaluation |
+| 2026-11-12 | Disclosure: tuning runs record the git state at the start of each run, while the tuning process executes the code loaded at its start (commit c4585d4); later tuning runs may therefore show a later commit or a dirty flag | Provenance; training, loss and model code did not change after c4585d4 | None |
 
 ## 14. Reproducibility
 

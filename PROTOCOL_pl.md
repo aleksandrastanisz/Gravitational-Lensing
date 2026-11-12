@@ -76,7 +76,7 @@ Siatka 128×128, `extent = 3.0″` (połowa szerokości pola, czyli ±3″; krok
 | pozycja soczewki x₀, y₀ | −0.1-0.1 |
 | shear γ₁, γ₂ | −0.08-0.08 |
 | kąt soczewki | 0-π |
-| nachylenie profilu s | 1.0 (SIE z rdzeniem 0.05) |
+| nachylenie profilu s | 1.0 (izotermiczny potencjał eliptyczny `ψ = θ_E·r_ell`, rdzeń 0.05; nie eliptyczny rozkład masy) |
 | źródło Sérsic: amp | 0.8-1.5 |
 | r_eff | 0.15-0.35 |
 | n | 0.8-2.5 |
@@ -155,7 +155,7 @@ Wszystkie liczone **per próbka** (nie jako średnie z batchy), na siatce 128×1
 | ID | Definicja |
 |---|---|
 | M1 | `relL2(α)` w pasie `\|r_ell − θ_E\| < 0.5″` (elipsa o parametrach prawdziwej soczewki) |
-| M2 | `relL2(źródło)` w aperturze R = 1.0″ wokół prawdziwego środka źródła |
+| M2 | `relL2(źródło)` w aperturze R = 1.0″ wokół prawdziwego środka źródła (dla dużego n Sérsica centralny pik sięga do ~100× jasności w r_eff, więc M2 zdominowane jest przez centralne piksele) |
 
 **Pomocnicze (neutralne):**
 
@@ -235,10 +235,13 @@ Dla N = 2 000 (rozmiar odniesienia). H1 uznajemy za poparte, gdy jednocześnie:
 | Mało seedów | 5 seedów; przedziały t-Studenta pokazują niepewność; nie wyciągamy wniosków z różnic w obrębie rozrzutu seedów |
 | Ukryte zależności: stała, mass-sheet | §3; M1b jako kontrola |
 | Zbiór treningowy skończony vs strumień online | Celowe (§5.3); poza zakresem sprawdzenie strumienia online |
+| Hiperparametry strojone tylko przy N = 2 000 | Podane jako ograniczenie H2: zależność efektu od N może częściowo odzwierciedlać gorsze dopasowanie λ, lr i wd przy N = 500 i 8 000 |
+| Oznaczony zbiór walidacyjny większy niż najmniejszy zbiór treningowy | Wybór checkpointu używa 1 000 oznaczonych próbek dla każdego N; wnioski o małej ilości danych dotyczą tylko zbioru treningowego (§12) |
+| Człony fizyczne jako ogólna regularyzacja | Sieć silnie się przeucza (pierwszy przebieg strojenia: treningowe `L_sup` 0.144 wobec `val_select` 0.506), więc zysk V3 może odzwierciedlać regularyzację w ogóle, a nie fizykę; plan tego nie rozdziela. Opisujemy to w dyskusji; V0 ma strojone weight decay (§7.1) |
 
 ## 12. Zakres wniosków
 
-Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, architektur FNO i U-Net, pięciu seedów. **Nie dotyczą** danych rzeczywistych, innych rodzin soczewek ani innych funkcji straty. Trening bez etykiet (V4) jest eksploracją, a nie wynikiem.
+Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, architektur FNO i U-Net, pięciu seedów. **Nie dotyczą** danych rzeczywistych, innych rodzin soczewek ani innych funkcji straty. Trening bez etykiet (V4) jest eksploracją, a nie wynikiem. Soczewka jest potencjałem eliptycznym, a nie eliptycznym rozkładem masy: przy małym q izolinie gęstości przybierają kształt hantli, szczególnie na osi A1 q (do q ≈ 0.47); κ pozostaje dodatnie. Obrazy nie zawierają światła galaktyki soczewkującej. „Mało danych treningowych” dotyczy wyłącznie zbioru treningowego: wybór checkpointu zawsze korzysta z 1 000 oznaczonych próbek walidacyjnych.
 
 ## 13. Dziennik odstępstw (zmiany po zamrożeniu)
 
@@ -260,6 +263,10 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | 2026-11-12 | Doprecyzowania opisowe w §5.1, §5.2, §7, §11 i §14: różnica operatorów, `extent` jako połowa szerokości, zakres kąta źródła, wejście i wyjście sieci, domyślne ustawienia OneCycleLR, przycinanie gradientu do 1.0, pomijany niepełny batch, ewaluacja co 500 kroków, zapis kroku i epoki referencyjnej, niedeterminizm GPU | Tekst nie opisywał tego, co robi kod | Brak; zmiany wyłącznie opisowe |
 | 2026-11-12 | Ujednolicenie brzmienia §15 pkt 3 w wersji angielskiej z polską (średnia ilorazów logarytmicznych d) | Wersje językowe różniły się precyzją | Brak |
 | 2026-11-12 | Dopisanie DOI zarchiwizowanego protokołu w Zenodo do §14 | Publiczny, niezmienialny znacznik czasu zamrożonego protokołu | Brak |
+| 2026-11-12 | Zmiana nazwy modelu soczewki z „SIE” na izotermiczny potencjał eliptyczny w §5.2; konsekwencje dopisane do §12 | Tekst błędnie nazywał model zaimplementowany w `profiles.py`; kod i dane bez zmian | Brak wpływu na wyniki; ogranicza interpretację astrofizyczną, zwłaszcza osi A1 q |
+| 2026-11-12 | Trzy zagrożenia dopisane do §11 (strojenie tylko przy N = 2 000, oznaczony zbiór walidacyjny, człony fizyczne jako ogólna regularyzacja); uwaga o M2 w §8 | Przegląd metodologiczny po pierwszym ukończonym przebiegu strojenia (V0, lr 3e-4, wd 1e-4) | Brak wpływu na reguły decyzyjne; ogranicza interpretację H1 i H2 |
+| 2026-11-12 | Ujawnienie: seedy test ID 200 000–200 149 były używane bez żadnego modelu w `tests/test_data.py` i `scripts/check_chi2_truth.py` przy rozwijaniu estymatora σ̂ używanego w `L_ray`; testy dymne używały seeda 42 i zbioru walidacyjnego | Przejrzystość | Znikomy; żaden model nie był oceniany na zbiorach testowych przed ewaluacją końcową |
+| 2026-11-12 | Ujawnienie: przebiegi strojenia zapisują stan gita z początku każdego przebiegu, a proces strojenia wykonuje kod wczytany przy swoim starcie (commit c4585d4); późniejsze przebiegi mogą więc pokazywać późniejszy commit lub flagę dirty | Pochodzenie wyników; kod treningu, straty i modelu nie zmienił się po c4585d4 | Brak |
 
 ## 14. Reprodukowalność
 
