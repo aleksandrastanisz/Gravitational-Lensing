@@ -164,7 +164,7 @@ All computed **per sample** (not as averages of batch means), on the 128×128 gr
 | M1b | as M1, after subtracting the mean deflection-error vector in the band from the error (denominator unchanged; removes the degeneracy with source translation) |
 | M3 | `relL2(ψ)` after removing the constant (gauge-fixed) |
 | M4 | `relL2(α)` over the full field (for comparison with M1) |
-| M4b | source centroid error [mas] and flux error in the same aperture (no relative threshold) |
+| M4b | source centroid error [mas]: flux-weighted centroid of the prediction vs that of the true source image, both inside the M2 aperture; flux error `F_pred/F_true − 1` in the same aperture, reported as the median (bias) and the median of its absolute value (scatter) |
 
 **Physical consistency (separate table, favours variants that optimized these quantities):**
 
@@ -184,8 +184,10 @@ All computed **per sample** (not as averages of batch means), on the 128×128 gr
 | S2 | U-Net/CNN, V0 vs V3, N = 2 000 | sensitivity to architecture |
 | S3 | oracle σ instead of estimated σ in `L_ray` (V2, V3) | sensitivity to noise |
 | S4 | observations from `A_model` (the *inverse crime* variant), V0 vs V3, N = 2 000; all splits (train, val, test ID, OOD) regenerated with `A_model` on the E-main seeds, configurations from `tuned.yaml` without separate tuning, seeds 42–46, data in `data_s4/`, runs tagged S4 | how much of the result depends on operator agreement |
-| X1 | V4 (no labels), N = 2 000 | exploratory |
+| X1 | V4 (no labels), N = 2 000; λ_ray and λ_pos from the tuned V3; checkpoint selected by `val_select`, as for all variants (this uses the 1 000 labelled validation samples and is stated in the report) | exploratory |
 | X2 | semi-supervised extension: `L_ray` and `L_pos` on all 8 000 observations, `L_sup` on the first N | exploratory (mixes constraints with additional data) |
+| X3 | one repeat of the selected V0 and V3 tuning configurations (N = 2 000, seed 100) | scale of run-to-run noise from GPU non-determinism; descriptive only, does not change the tuning choice |
+| X4 | variant R = `L_sup + λ_R·L_R`, `L_R = mean((∇²ψ)²)` on the grid interior (non-physical smoothness penalty on the curvature of ψ regardless of sign); λ_R from 3 values tuned at N = 2 000, seed 100, then 5 seeds (42–46); compared with V3 on the OOD axes as in §10 | exploratory; run **only if H1 is supported**; tests whether a gain of V3 reflects generic regularization. Grid fixed in advance: λ_R such that λ_R·L_R on the true ψ of the training set equals 1%, 10% and 100% of the final training `L_sup` of the selected V0 tuning run |
 
 Number of trainings in E-main: 4 × 3 × 5 = 60 (+ 36 for tuning + controls).
 
@@ -267,6 +269,10 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-12 | Three threats added to §11 (tuning only at N = 2 000, labelled validation set, physics terms as generic regularizers); note on M2 in §8 | Methodological review after the first completed tuning run (V0, lr 3e-4, wd 1e-4) | None on decision rules; limits interpretation of H1 and H2 |
 | 2026-11-12 | Disclosure: test-ID seeds 200 000–200 149 were used without any model in `tests/test_data.py` and `scripts/check_chi2_truth.py` while developing the σ̂ estimator used in `L_ray`; smoke tests used seed 42 and the validation set | Transparency | Negligible; no model was evaluated on any test set before the final evaluation |
 | 2026-11-12 | Disclosure: tuning runs record the git state at the start of each run, while the tuning process executes the code loaded at its start (commit c4585d4); later tuning runs may therefore show a later commit or a dirty flag | Provenance; training, loss and model code did not change after c4585d4 | None |
+| 2026-11-12 | M4b definition fixed in §8 (centroid against the true image centroid in the aperture; signed relative flux error, median and median absolute value) | The protocol did not define the reference centroid or the flux error; decided before any evaluation | Fixes an auxiliary metric before results |
+| 2026-11-12 | X1 (V4) specified in §9: λ from tuned V3, checkpoint by `val_select` | Keeps the common selection criterion of §7; the use of labelled validation data is disclosed | Exploratory only |
+| 2026-11-12 | X3 added to §9: one repeat of the selected V0 and V3 tuning configurations | GPU non-determinism produced differences of ~0.01–0.015 in `val_select` between tuning runs mid-training | Descriptive; tuning choice unchanged |
+| 2026-11-12 | X4 added to §9: conditional control with a non-physical smoothness penalty, grid rule fixed in advance | Addresses the threat "physics terms as generic regularizers" (§11); registered before any tuning result of V1–V3 or any test result | Exploratory; runs only if H1 is supported |
 
 ## 14. Reproducibility
 

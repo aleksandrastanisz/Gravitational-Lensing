@@ -164,7 +164,7 @@ Wszystkie liczone **per próbka** (nie jako średnie z batchy), na siatce 128×1
 | M1b | jak M1, po odjęciu od błędu średniego wektora błędu ugięcia w pasie (mianownik bez zmian; usuwa degenerację z translacją źródła) |
 | M3 | `relL2(ψ)` po usunięciu stałej (gauge-fixed) |
 | M4 | `relL2(α)` na całym polu (do porównania z M1) |
-| M4b | błąd centroidu źródła [mas] i błąd strumienia w tej samej aperturze (bez progu względnego) |
+| M4b | błąd centroidu źródła [mas]: centroid predykcji ważony strumieniem względem centroidu prawdziwego obrazu źródła, oba w aperturze M2; błąd strumienia `F_pred/F_true − 1` w tej samej aperturze, raportowany jako mediana (obciążenie) i mediana wartości bezwzględnej (rozrzut) |
 
 **Spójność fizyczna (osobna tabela, faworyzuje warianty, które to optymalizowały):**
 
@@ -184,8 +184,10 @@ Wszystkie liczone **per próbka** (nie jako średnie z batchy), na siatce 128×1
 | S2 | U-Net/CNN, V0 vs V3, N = 2 000 | czułość na architekturę |
 | S3 | σ oracle zamiast σ szacowanej w `L_ray` (V2, V3) | czułość na szum |
 | S4 | obserwacje z `A_model` (wariant z *inverse crime*), V0 vs V3, N = 2 000; wszystkie podziały (train, val, test ID, OOD) generowane od nowa przez `A_model` na seedach z E-main, konfiguracje z `tuned.yaml` bez osobnego strojenia, seedy 42–46, dane w `data_s4/`, treningi z tagiem S4 | ile wyników zależy od zgodności operatorów |
-| X1 | V4 (bez etykiet), N = 2 000 | eksploracyjny |
+| X1 | V4 (bez etykiet), N = 2 000; λ_ray i λ_pos z dostrojonego V3; checkpoint wybierany przez `val_select`, jak dla wszystkich wariantów (korzysta to z 1 000 oznaczonych próbek walidacyjnych i jest jawnie podane w raporcie) | eksploracyjny |
 | X2 | rozszerzenie półnadzorowane: `L_ray` i `L_pos` na wszystkich 8 000 obserwacjach, `L_sup` na pierwszych N | eksploracyjny (miesza więzy z dodatkowymi danymi) |
+| X3 | jedno powtórzenie wybranych konfiguracji strojenia V0 i V3 (N = 2 000, seed 100) | skala szumu między przebiegami wynikającego z niedeterminizmu GPU; wyłącznie opisowo, nie zmienia wyboru ze strojenia |
+| X4 | wariant R = `L_sup + λ_R·L_R`, `L_R = mean((∇²ψ)²)` we wnętrzu siatki (niefizyczna kara za krzywiznę ψ niezależnie od znaku); λ_R z 3 wartości strojonych przy N = 2 000, seed 100, potem 5 seedów (42–46); porównanie z V3 na osiach OOD jak w §10 | eksploracyjny; uruchamiany **tylko jeśli H1 jest poparta**; sprawdza, czy zysk V3 odzwierciedla ogólną regularyzację. Siatka ustalona z góry: λ_R takie, że λ_R·L_R na prawdziwym ψ zbioru treningowego równa się 1%, 10% i 100% końcowego treningowego `L_sup` wybranego przebiegu strojenia V0 |
 
 Liczba treningów w E-main: 4 × 3 × 5 = 60 (+ strojenie 36 + kontrole).
 
@@ -267,6 +269,10 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | 2026-11-12 | Trzy zagrożenia dopisane do §11 (strojenie tylko przy N = 2 000, oznaczony zbiór walidacyjny, człony fizyczne jako ogólna regularyzacja); uwaga o M2 w §8 | Przegląd metodologiczny po pierwszym ukończonym przebiegu strojenia (V0, lr 3e-4, wd 1e-4) | Brak wpływu na reguły decyzyjne; ogranicza interpretację H1 i H2 |
 | 2026-11-12 | Ujawnienie: seedy test ID 200 000–200 149 były używane bez żadnego modelu w `tests/test_data.py` i `scripts/check_chi2_truth.py` przy rozwijaniu estymatora σ̂ używanego w `L_ray`; testy dymne używały seeda 42 i zbioru walidacyjnego | Przejrzystość | Znikomy; żaden model nie był oceniany na zbiorach testowych przed ewaluacją końcową |
 | 2026-11-12 | Ujawnienie: przebiegi strojenia zapisują stan gita z początku każdego przebiegu, a proces strojenia wykonuje kod wczytany przy swoim starcie (commit c4585d4); późniejsze przebiegi mogą więc pokazywać późniejszy commit lub flagę dirty | Pochodzenie wyników; kod treningu, straty i modelu nie zmienił się po c4585d4 | Brak |
+| 2026-11-12 | Ustalona definicja M4b w §8 (centroid względem centroidu prawdziwego obrazu w aperturze; względny błąd strumienia ze znakiem, mediana i mediana wartości bezwzględnej) | Protokół nie określał centroidu odniesienia ani błędu strumienia; decyzja przed jakąkolwiek ewaluacją | Ustala metrykę pomocniczą przed wynikami |
+| 2026-11-12 | Doprecyzowanie X1 (V4) w §9: λ z dostrojonego V3, checkpoint przez `val_select` | Zachowuje wspólne kryterium wyboru z §7; użycie oznaczonych danych walidacyjnych jest jawne | Wyłącznie eksploracyjne |
+| 2026-11-12 | Dodanie X3 do §9: jedno powtórzenie wybranych konfiguracji strojenia V0 i V3 | Niedeterminizm GPU dał różnice ~0.01–0.015 w `val_select` między przebiegami strojenia w połowie treningu | Opisowe; wybór ze strojenia bez zmian |
+| 2026-11-12 | Dodanie X4 do §9: warunkowa kontrola z niefizyczną karą wygładzającą, reguła siatki ustalona z góry | Odpowiada na zagrożenie „człony fizyczne jako ogólna regularyzacja” (§11); zarejestrowane przed jakimkolwiek wynikiem strojenia V1–V3 i przed wynikami testowymi | Eksploracyjne; uruchamiane tylko, jeśli H1 jest poparta |
 
 ## 14. Reprodukowalność
 
