@@ -96,6 +96,7 @@ python -m venv .venv
 pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu124
 
 python -m scripts.make_datasets       # writes data/ (train, val, test_id, ood/*)
+python -m scripts.make_datasets_diag  # writes data/diag/ (negative-mass control axis, outside the primary endpoint)
 python -m pytest tests -q
 python -m scripts.tune                # 36 runs, writes configs/tuned.yaml
 python -m scripts.run_emain           # 60 runs of the main experiment
