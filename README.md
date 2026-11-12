@@ -1,5 +1,7 @@
 # PI-FNO: Physics constraints and out-of-distribution generalization in gravitational-lensing inversion
 
+[![DOI](https://zenodo.org/badge/1446015753.svg)](https://doi.org/10.5281/zenodo.24164618)
+
 A controlled study of whether physical constraints in the loss of a Fourier Neural Operator (FNO) improve the reconstruction of the lens potential $\psi$ and the unlensed source $S$ from a single noisy image, **outside the training distribution**, and whether the effect grows when training data are scarce.
 
 The study follows a protocol frozen before the first training run: [`PROTOCOL_en.md`](PROTOCOL_en.md) (Polish version: [`PROTOCOL_pl.md`](PROTOCOL_pl.md)). Every change made after freezing is logged in §13 of the protocol.
@@ -109,4 +111,4 @@ One training run takes about 72 minutes on a GTX 1660: about 43 h for tuning and
 
 ## Citation and license
 
-A DOI will be added after the first archived release. See `LICENSE` for the license terms.
+To cite the project, use [10.5281/zenodo.24164618](https://doi.org/10.5281/zenodo.24164618) (all versions). The frozen protocol and the code before any test-set evaluation are archived as version `protocol-v1.0`: [10.5281/zenodo.24164619](https://doi.org/10.5281/zenodo.24164619). See `LICENSE` for the license terms.

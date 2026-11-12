@@ -259,6 +259,7 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | 2026-11-12 | Specyfikacja osi Kneg w §15 pkt 4 (lustro A3 z b < 0, poza E1, `DIAG_LEVELS`; graniczny L1 zaakceptowany); aktualizacja uwagi o κ ≥ 0 w §2 | Doprecyzowanie opcjonalnej osi z §11 | Tylko diagnostyka, poza E1 |
 | 2026-11-12 | Doprecyzowania opisowe w §5.1, §5.2, §7, §11 i §14: różnica operatorów, `extent` jako połowa szerokości, zakres kąta źródła, wejście i wyjście sieci, domyślne ustawienia OneCycleLR, przycinanie gradientu do 1.0, pomijany niepełny batch, ewaluacja co 500 kroków, zapis kroku i epoki referencyjnej, niedeterminizm GPU | Tekst nie opisywał tego, co robi kod | Brak; zmiany wyłącznie opisowe |
 | 2026-11-12 | Ujednolicenie brzmienia §15 pkt 3 w wersji angielskiej z polską (średnia ilorazów logarytmicznych d) | Wersje językowe różniły się precyzją | Brak |
+| 2026-11-12 | Dopisanie DOI zarchiwizowanego protokołu w Zenodo do §14 | Publiczny, niezmienialny znacznik czasu zamrożonego protokołu | Brak |
 
 ## 14. Reprodukowalność
 
@@ -268,6 +269,7 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 - Dla każdego checkpointu zapisujemy: wariant, N, seed, konfigurację, `val_select`, krok i epokę referencyjną (krok / 500, czyli epoki przy N = 8 000).
 - Zbiory danych i inicjalizacja są bitowo powtarzalne; trening na GPU nie jest (niedeterministyczne jądra FFT i backward `grid_sample`), więc powtórzone treningi z tym samym seedem mogą się minimalnie różnić.
 - Wagi warstwy `SpectralConv2d` są spłaszczone do kształtu `(modes1 * modes2, in_channels, out_channels)` pod akcelerację obliczeń przez `torch.bmm` zamiast operacji `einsum` (równoważne numerycznie, inny format kluczy w `state_dict`).
+- Zamrożony protokół, z dziennikiem §13 do 2026-11-12 i kodem z tego dnia, jest zarchiwizowany w Zenodo przed jakąkolwiek ewaluacją na zbiorach testowych: [10.5281/zenodo.24164619](https://doi.org/10.5281/zenodo.24164619).
 
 ## 15. Rozstrzygnięcia decyzji (stan zamrożony)
 

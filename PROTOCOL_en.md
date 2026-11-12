@@ -259,6 +259,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-12 | Kneg axis specified in §15 item 4 (mirror of A3 with b < 0, outside E1, `DIAG_LEVELS`; L1 borderline accepted); §2 note on κ ≥ 0 updated | Specifies the optional axis from §11 | Diagnostic only, outside E1 |
 | 2026-11-12 | Descriptive clarifications in §5.1, §5.2, §7, §11 and §14: operator difference, `extent` as half-width, source angle range, network input and output, OneCycleLR defaults, gradient clipping at 1.0, dropped incomplete batch, evaluation every 500 steps, logging of step and reference epoch, GPU non-determinism | The text did not describe what the code does | None; descriptive only |
 | 2026-11-12 | Wording of §15 item 3 aligned with the Polish version (mean of log-ratios d) | Language versions disagreed in precision | None |
+| 2026-11-12 | Added the Zenodo DOI of the archived protocol to §14 | Public, immutable timestamp of the frozen protocol | None |
 
 ## 14. Reproducibility
 
@@ -268,6 +269,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 - For each checkpoint we record: variant, N, seed, configuration, `val_select`, step and reference epoch (step / 500, i.e. epochs at N = 8 000).
 - Datasets and initialization are bit-for-bit reproducible; GPU training is not (non-deterministic FFT and `grid_sample` backward kernels), so repeated runs with the same seed may differ slightly.
 - Weights in `SpectralConv2d` are flattened to shape `(modes1 * modes2, in_channels, out_channels)` for computational acceleration via `torch.bmm` instead of `einsum` (numerically equivalent, distinct `state_dict` key layout).
+- The frozen protocol, with the §13 log up to 2026-11-12 and the code at that date, is archived on Zenodo before any test-set evaluation: [10.5281/zenodo.24164619](https://doi.org/10.5281/zenodo.24164619).
 
 ## 15. Decisions Prior to Freezing (Resolved)
 
