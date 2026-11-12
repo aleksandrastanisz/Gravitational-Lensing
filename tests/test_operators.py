@@ -5,7 +5,7 @@ from src.physics.operators import make_grid, a_truth
 def test_grid_nodes_coincide():
     xf, _ = make_grid(255, 3.0)
     xc, _ = make_grid(128, 3.0)
-    print("Maksymalna różnica węzłów:", (xf[0, ::2] - xc[0]).abs().max().item())
+    print("Max node difference:", (xf[0, ::2] - xc[0]).abs().max().item())
     assert torch.allclose(xf[0, ::2], xc[0], atol=1e-6)
 
 

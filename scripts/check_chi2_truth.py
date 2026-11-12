@@ -12,4 +12,4 @@ for s in range(200_000, 200_100):
     pull = (loss.tracer(d["source"], d["psi"]) - d["observed"]) / estimate_sigma(d["observed"], cfg.gain)
     mask = d["clean_lensed"] > 3 * d["noise_map"]
     arc.append(pull[mask].pow(2).mean().item()); glob.append(pull.pow(2).mean().item())
-print(f"chi2 na prawdziwych (psi, source): łuk {np.median(arc):.3f}, globalnie {np.median(glob):.3f}")
+print(f"chi2 on true (psi, source): arc {np.median(arc):.3f}, global {np.median(glob):.3f}")

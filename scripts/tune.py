@@ -25,10 +25,10 @@ def trial(variant, **hp):
 def stage(variant, grid, tuned_keys):
     best = min((trial(variant, **hp) for hp in grid), key=lambda r: r["val_select"])
     chosen = {k: best[k] for k in tuned_keys}
-    where = {k: ("dolna granica siatki" if best[k] == min(GRIDS[k])
-                 else "górna granica siatki" if best[k] == max(GRIDS[k]) else "wnętrze")
+    where = {k: ("lower grid edge" if best[k] == min(GRIDS[k])
+                 else "upper grid edge" if best[k] == max(GRIDS[k]) else "interior")
              for k in tuned_keys}
-    print(f"== {variant}: wybrane {chosen}; położenie: {where}", flush=True)
+    print(f"== {variant}: selected {chosen}; position: {where}", flush=True)
     return best
 
 
@@ -47,5 +47,5 @@ tuned = {"V0": pick(b0, ["lr", "wd"]),
 Path("configs/tuned.yaml").write_text(yaml.safe_dump(tuned, sort_keys=False))
 Path("results").mkdir(exist_ok=True)
 Path("results/tuning.json").write_text(json.dumps(rows, indent=1))
-print("\nwybrane:", tuned)
-print(f"łączny czas treningu: {sum(r['seconds'] for r in rows) / 3600:.1f} h")
+print("\nselected:", tuned)
+print(f"total training time: {sum(r['seconds'] for r in rows) / 3600:.1f} h")
