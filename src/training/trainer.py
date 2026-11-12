@@ -17,6 +17,8 @@ from src.models.fno_reconstructor import FNOLensingReconstructor
 from src.utils.config import SimulationConfig
 
 REF_STEPS_PER_EPOCH = 8_000 // 16
+TRAIN_KEYS = ("observed", "psi", "source", "noise_map")
+VAL_KEYS = ("observed", "psi", "source")
 
 
 @dataclass(frozen=True)
@@ -50,14 +52,14 @@ def to_dev(batch, device):
     return {k: v.to(device, non_blocking=True) for k, v in batch.items()}
 
 
-def load_arrays(ds):
-    return {k: torch.from_numpy(np.array(ds.a[k][:ds.n])) for k in ds.a}
+def load_arrays(ds, keys=None):
+    return {k: torch.from_numpy(np.array(ds.a[k][:ds.n])) for k in (keys or ds.a)}
 
 
-def batches(ds, batch, seed):
+def batches(ds, batch, seed, keys=None):
     assert ds.n >= batch, f"dataset size ({ds.n}) smaller than batch ({batch})"
     g = torch.Generator().manual_seed(seed)
-    data = load_arrays(ds)
+    data = load_arrays(ds, keys)
     while True:
         perm = torch.randperm(ds.n, generator=g)
         for i in range(0, ds.n - batch + 1, batch):
@@ -65,7 +67,7 @@ def batches(ds, batch, seed):
             yield {k: v[idx] for k, v in data.items()}
 
 
-@torch.no_grad()
+@torch.inference_mode()
 def val_select(model, arrays, d, device, batch=50):
     model.eval()
     n = len(next(iter(arrays.values())))
@@ -101,6 +103,8 @@ def run(c: TrainConfig, device=None):
         return meta
     out.mkdir(parents=True, exist_ok=True)
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    commit, dirty = _git_state()
+    gpu = torch.cuda.get_device_name(device) if device.type == "cuda" else None
     cfg = SimulationConfig.from_yaml()
 
     torch.manual_seed(c.seed)
@@ -113,8 +117,8 @@ def run(c: TrainConfig, device=None):
     opt = AdamW(model.parameters(), lr=c.lr, weight_decay=c.wd)
     sched = OneCycleLR(opt, max_lr=c.lr, total_steps=c.steps)
 
-    data = batches(NpyDataset(f"{c.data_root}/train", n=c.n_train), c.batch, c.seed)
-    val_arrays = load_arrays(NpyDataset(f"{c.data_root}/val"))
+    data = batches(NpyDataset(f"{c.data_root}/train", n=c.n_train), c.batch, c.seed, TRAIN_KEYS)
+    val_arrays = to_dev(load_arrays(NpyDataset(f"{c.data_root}/val"), VAL_KEYS), device)
     d = 2.0 * cfg.extent / (cfg.grid_size - 1)
 
     best, best_rec, hist, acc, n_acc = math.inf, None, [], {}, 0
@@ -155,10 +159,9 @@ def run(c: TrainConfig, device=None):
                     torch.save(model.state_dict(), out / "best.pt")
 
     (out / "history.json").write_text(json.dumps(hist, indent=1))
-    commit, dirty = _git_state()
     meta = dict(
         train=asdict(c), best=best_rec, seconds=time.perf_counter() - t0, eval_seconds=eval_sec,
         prior_sha256=hashlib.sha256(Path("configs/prior.yaml").read_bytes()).hexdigest(),
-        commit=commit, git_dirty=dirty, torch=torch.__version__, device=str(device))
+        commit=commit, git_dirty=dirty, torch=torch.__version__, device=str(device), gpu=gpu)
     (out / "meta.json").write_text(json.dumps(meta, indent=1))
     return meta
