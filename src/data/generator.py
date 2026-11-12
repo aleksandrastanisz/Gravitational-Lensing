@@ -14,6 +14,8 @@ AXIS_ID = {"A1_theta_e": 1, "A1_q": 2, "A1_shear": 3, "A1_src_pos": 4,
            "A2": 5, "A3": 6, "A4": 7, "A5": 8, "A6": 9}
 N_LEVELS = {"A1_theta_e": 3, "A1_q": 3, "A1_shear": 3, "A1_src_pos": 3,
             "A2": 3, "A3": 3, "A4": 1, "A5": 3, "A6": 2}
+DIAG_LEVELS = {"Kneg": 3}
+MIRROR_OF = {"Kneg": "A3"}
 FRAC = (0.25, 0.50, 1.00)
 DELTA = (0.1, 0.2, 0.3)
 B_RANGE = ((0.02, 0.05), (0.05, 0.12), (0.12, 0.25))
@@ -29,6 +31,10 @@ class Shift:
 
 def all_shifts():
     return [Shift(a, l) for a, n in N_LEVELS.items() for l in range(1, n + 1)]
+
+
+def diag_shifts():
+    return [Shift(a, l) for a, n in DIAG_LEVELS.items() for l in range(1, n + 1)]
 
 
 def param_ranges(c):
@@ -67,7 +73,7 @@ def apply_shift(p, u, cfg, shift, seed):
     if shift is None:
         return p, slope, sub, clumps, psf
     l, ax, rng_all = shift.level, shift.axis, param_ranges(cfg)
-    ss = np.random.SeedSequence([seed, AXIS_ID[ax], l])
+    ss = np.random.SeedSequence([seed, AXIS_ID[MIRROR_OF.get(ax, ax)], l])
     rng = np.random.default_rng(ss)
     f = FRAC[l - 1]
 
@@ -86,8 +92,10 @@ def apply_shift(p, u, cfg, shift, seed):
     elif ax == "A2":
         d = DELTA[l - 1]
         slope = float(rng.uniform(1 - d, 1 + d))
-    elif ax == "A3":
+    elif ax in ("A3", "Kneg"):
         b = float(rng.uniform(*B_RANGE[l - 1]))
+        if ax == "Kneg":
+            b = -b
         ang, rad = rng.uniform(0, 2 * np.pi), p["theta_e"] * rng.uniform(0.6, 1.2)
         sub = (b, float(rad * np.cos(ang)), float(rad * np.sin(ang)))
     elif ax == "A4":
