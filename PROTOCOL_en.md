@@ -22,7 +22,7 @@ We do not ask about speed or about comparison with parametric fitting. We study 
 |---|---|---|
 | `L_sup` | `relL2(source) + 2·relL2(α)`, where `α = ∇ψ` (central differences) | ψ is supervised only through α, so the constant in ψ is free |
 | `L_ray` | mean robust pull: `2c²·(√(1 + (pull/c)²) − 1)`, where `pull = (I_recon − I_obs)/σ̂`, `c = 10` | σ̂ estimated from observation (`noise.py`), not clean image; asymptotic `pull²` for small values and `2c·\|pull\|` for outliers |
-| `L_pos` | mean `ReLU(−κ)²`, `κ = ½∇²ψ`, grid interior excluding a 2-pixel border | **κ ≥ 0 holds for the entire data family (including all OOD axes), so the constraint is correct but consistent with the generator** (§11) |
+| `L_pos` | mean `ReLU(−κ)²`, `κ = ½∇²ψ`, grid interior excluding a 2-pixel border | **κ ≥ 0 holds for the entire data family (including all OOD axes A1–A6), so the constraint is correct but consistent with the generator** (§11); the only exception is the diagnostic Kneg axis outside E1 (§15, item 4) |
 
 **Variants** (one architecture, one dataset, one procedure):
 
@@ -61,13 +61,13 @@ Directional predictions, **exploratory** (no multiple-comparison correction, rep
 ## 5. Physics and data
 
 ### 5.1 Forward operators
-- **`A_truth`** (generates all observations): 255×255 grid (nodes coincide with every second node of the 128 grid), Gaussian PSF with FWHM 0.10″, subsampling `[::2]` to a 128×128 grid.
+- **`A_truth`** (generates all observations): 255×255 grid (every second node coincides with a node of the 128 grid), Gaussian PSF with FWHM 0.10″, subsampling `[::2]` to a 128×128 grid.
 - **`A_model`** (used in `L_ray`): 128×128 grid, PSF 0.10″, bilinear interpolation.
 
-Observations are never generated with the operator used in the loss. This rules out an *inverse crime* by construction. Sensitivity to this choice is checked in S4 (§9).
+Observations are never generated with the operator used in the loss. This rules out an *inverse crime* in the strict sense. The difference between the operators is small, however: both use the same ray tracer, the same PSF, bilinear interpolation and α from central differences of the sampled ψ. They differ only in resolution (255 vs 128) and in `A_truth` sampling the source analytically on the fine grid. The protection is therefore weak, and S4 (§9) measures how much of the result depends on it.
 
 ### 5.2 Training family (ID)
-128×128 grid, `extent = 3.0″` (pixel step 47.24 mas), gain 500, noise `σ² = σ₀² + max(F,0)/gain`, `σ₀ ~ U(0.01, 0.03)` per sample.
+128×128 grid, `extent = 3.0″` (half-width of the field, i.e. ±3″; pixel step 47.24 mas), gain 500, noise `σ² = σ₀² + max(F,0)/gain`, `σ₀ ~ U(0.01, 0.03)` per sample.
 
 | Parameter | Training range |
 |---|---|
@@ -82,6 +82,7 @@ Observations are never generated with the operator used in the loss. This rules 
 | n | 0.8-2.5 |
 | source position | −0.4-0.4 |
 | source q | 0.5-0.9 |
+| source angle | 0-π |
 
 All ranges are stored in `configs/prior.yaml`. No script copies them by hand.
 
@@ -103,24 +104,33 @@ OOD sets are touched **only** in the final evaluation. They are not used for che
 
 | Axis | Change | Levels (mild / moderate / severe) |
 |---|---|---|
-| A1 parameters | extrapolation of one parameter: θ_E (upper), q (lower), shear (both sides), source position (both sides) | exceeding the range by 25% / 50% / 100% of the range width |
-| A2 profile | slope `ψ ∝ r^s`, s ∈ [1−δ, 1+δ] | δ = 0.1 / 0.2 / 0.3 |
-| A3 substructure | additional Plummer term with amplitude b near the ring | b ∈ [0.02, 0.05] / [0.05, 0.12] / [0.12, 0.25] |
+| A1 parameters | extrapolation of one parameter group: θ_E (upper), q (lower), shear γ₁ and γ₂ together (both sides), source position x and y together (both sides) | values drawn uniformly from a band of width 25% / 50% / 100% of the range width just outside the range |
+| A2 profile | slope `ψ = θ_E^(2−s)·r^s/s`, s ∈ [1−δ, 1+δ] | δ = 0.1 / 0.2 / 0.3 |
+| A3 substructure | additional Plummer term with amplitude b near the ring (b = peak deflection [arcsec], core a = 0.1″) | b ∈ [0.02, 0.05] / [0.05, 0.12] / [0.12, 0.25] |
 | A4 source | 3 Gaussians instead of Sérsic | 1 level (fixed, enters E1) |
 | A5 noise | `σ₀` outside the training range | 0.005 / 0.05 / 0.08 |
 | A6 operator | A_truth with PSF 0.12″ instead of 0.10″ (mismatch with A_model) | PSF 0.12″ (moderate / L1, enters E1) / 0.15″ (severe / L2) |
 
 For each axis we report a dose–response curve (metric vs level), not a single point.
 
+Generator details (`src/data/generator.py`):
+- **A1:** each level draws the parameter uniformly from a band of width f·w just outside the training range (f = 0.25 / 0.5 / 1.0, w = range width). On two-sided axes the side is set by that component's base draw: u < 0.5 below the range, u ≥ 0.5 above it. All other parameters keep their test-ID values. A1 enters E1 as one axis (§15, item 3).
+- **A2:** the normalization `θ_E^(2−s)` keeps the Einstein radius at θ_E for every s.
+- **A3:** `ψ_sub = b·a·ln(|θ − θ_s|² + a²)` with a = 0.1″, so b is the peak deflection of the perturbation. The centre θ_s lies at distance θ_E·U(0.6, 1.2) from the grid centre (not the lens centre), at angle U(0, 2π).
+- **A4:** three Gaussians with amplitude U(0.5, 1), position U(−0.4, 0.4)″ and width σ U(0.08, 0.2)″. The source centre used by M2 and M4b is the flux-weighted centroid (weights a·σ²).
+- **Auxiliary draws** for A2–A4 come from `np.random.SeedSequence([seed, axis_id, level])`, so they do not consume the base stream (u, z) and the pairing with test ID is preserved.
+
 ## 7. Models and training
 
 - **Architecture (main):** FNOLensingReconstructor (modes = 32, width = 64, pad_ratio = 0.25). We do not change it between variants.
+- **Input and output:** the network sees only `observed` (plus two coordinate channels), not `noise_map`. The ψ output is centred (grid mean subtracted); the source output passes through Softplus, so it is non-negative.
 - **Architecture (control, S2):** U-Net/CNN with a comparable number of parameters, V0 and V3 only, at N = 2 000. Checks whether the conclusions are specific to FNO.
 - **Budget:** fixed number of optimizer steps for all N (12 500 steps, batch 16; for N = 8 000 this corresponds to about 25 epochs). Smaller N means more epochs.
-- **Optimizer:** AdamW + OneCycleLR (parameters tuned in §7.1).
+- **Optimizer:** AdamW + OneCycleLR with PyTorch defaults (pct_start = 0.3, cosine annealing, div_factor = 25, final_div_factor = 10⁴) and max_lr = lr (tuned in §7.1); gradient norm clipped to 1.0.
 - **Warm-up of physical terms:** `warm(step) = clip((step − 1500) / 1500, 0, 1)`, corresponding to 0 for the first 1,500 steps (3 epochs at base N = 8,000, batch 16) and a linear ramp to 1.0 over steps 1,500–3,000 across all N.
 - **Seeds:** 5 evaluation seeds (42-46). The seed controls initialization and data order. The same seed gives the same initialization in all variants (paired comparison).
-- **Checkpoint selection:** one common criterion for all variants, `val_select = relL2(source) + 2·relL2(α)` on val (ID). The `L_ray` and `L_pos` terms do not enter the criterion.
+- **Data order:** each epoch is a fresh permutation of the N training samples (generator seeded with the run seed); the incomplete last batch of an epoch is dropped.
+- **Checkpoint selection:** one common criterion for all variants, `val_select = relL2(source) + 2·relL2(α)` on val (ID). The `L_ray` and `L_pos` terms do not enter the criterion. Evaluated every 500 steps (25 evaluations per run); the best one is kept.
 
 ### 7.1 Tuning (equal budget)
 Tuning on **val (ID)**, N = 2 000, with a **separate seed 100** (outside the evaluation seeds). Each variant gets 9 configurations:
@@ -131,6 +141,8 @@ Tuning on **val (ID)**, N = 2 000, with a **separate seed 100** (outside the eva
 | V1 | λ_pos ∈ {1, 15, 50} × wd ∈ {1e-4, 1e-3, 1e-2} |
 | V2 | λ_ray ∈ {0.005, 0.02, 0.1} × wd ∈ {1e-4, 1e-3, 1e-2} |
 | V3 | λ_ray ∈ {0.005, 0.02, 0.1} × λ_pos ∈ {1, 15, 50} |
+
+V1–V3 take lr from the V0 choice; V3 also takes wd from V0. If the optimum lies on the edge of a grid, the grid is not extended; this is reported with the results.
 
 The selected configuration is fixed for all N and seeds. The aim is to ensure the baseline is not under-regularized relative to the variants with physical terms.
 
@@ -149,7 +161,7 @@ All computed **per sample** (not as averages of batch means), on the 128×128 gr
 
 | ID | Definition |
 |---|---|
-| M1b | as M1, after subtracting the constant deflection component (removes the degeneracy with source translation) |
+| M1b | as M1, after subtracting the mean deflection-error vector in the band from the error (denominator unchanged; removes the degeneracy with source translation) |
 | M3 | `relL2(ψ)` after removing the constant (gauge-fixed) |
 | M4 | `relL2(α)` over the full field (for comparison with M1) |
 | M4b | source centroid error [mas] and flux error in the same aperture (no relative threshold) |
@@ -158,8 +170,8 @@ All computed **per sample** (not as averages of batch means), on the 128×128 gr
 
 | ID | Definition |
 |---|---|
-| M5 | unclamped `χ²`, separately on the arc mask (`F_clean > 3σ`) and globally, with σ estimated from the observation (oracle σ only as a control) |
-| M6 | fraction of pixels with `κ < 0` in the grid interior |
+| M5 | unclamped `χ²` computed with `A_model` (PSF 0.10″ on every axis, including A6), separately on the arc mask (`clean_lensed > 3σ_true`) and globally, with σ estimated from the observation (oracle σ only as a control); an empty arc mask gives NaN, aggregated with nanmedian |
+| M6 | fraction of pixels with strictly `κ < 0` (κ = 0 does not count) in the grid interior |
 
 **Generalization measure:** `R[v,a] = M1[v,a] / M1[v,ID]` (ratio of the error on the axis to the ID error) as well as the absolute `M1[v,a]`. We report both, because the gap `R` alone can shrink when ID performance worsens.
 
@@ -171,7 +183,7 @@ All computed **per sample** (not as averages of batch means), on the 128×128 gr
 | S1 | V2 and V3 with clamped χ² (`chi2_mode = clamp`, max 100) instead of pseudo-Huber, N = 2 000 | sensitivity to the χ² clipping method |
 | S2 | U-Net/CNN, V0 vs V3, N = 2 000 | sensitivity to architecture |
 | S3 | oracle σ instead of estimated σ in `L_ray` (V2, V3) | sensitivity to noise |
-| S4 | observations from `A_model` (the *inverse crime* variant), V0 vs V3, N = 2 000 | how much of the result depends on operator agreement |
+| S4 | observations from `A_model` (the *inverse crime* variant), V0 vs V3, N = 2 000; all splits (train, val, test ID, OOD) regenerated with `A_model` on the E-main seeds, configurations from `tuned.yaml` without separate tuning, seeds 42–46, data in `data_s4/`, runs tagged S4 | how much of the result depends on operator agreement |
 | X1 | V4 (no labels), N = 2 000 | exploratory |
 | X2 | semi-supervised extension: `L_ray` and `L_pos` on all 8 000 observations, `L_sup` on the first N | exploratory (mixes constraints with additional data) |
 
@@ -200,13 +212,13 @@ For N = 2 000 (reference size). H1 is considered supported when all of the follo
 2. the 95% confidence interval for the mean (t distribution, 4 degrees of freedom) does not contain 0,
 3. `E1[s] < 0` in at least 4 of 5 seeds.
 
-**H2.** Slope of `E1` with respect to `log N` (regression over seeds), with a confidence interval. Supported when the interval does not contain 0 and the sign agrees with the hypothesis.
+**H2.** Slope of `E1` with respect to `log N`, fitted separately in each seed (3 points per seed); the mean slope over seeds with a 95% t interval (4 degrees of freedom). Supported when the interval does not contain 0 and the sign agrees with the hypothesis.
 
-**H3.** Difference on ID `d[s,ID]` for M1 and M2: non-inferiority holds when the upper 95% CI bound is `≤ log(1.05)`.
+**H3.** Difference on ID `d[s,ID]` for M1 and M2: non-inferiority holds when the upper 95% CI bound is `≤ log(1.05)`. Decided at N = 2 000.
 
-**Individual axes and individual components (V1, V2 vs V0)** are secondary analyses: Holm correction over the family (6 axes × 3 comparisons), labelled as such in the report. They are not used to confirm H1.
+**Individual axes and individual components (V1, V2 vs V0)** are secondary analyses: Holm correction over the family (6 axes × 3 comparisons = 18 tests), labelled as such in the report. They are not used to confirm H1.
 
-**Additionally (always):** bootstrap interval over samples for `d` in each seed (95%), so that the contribution of test-set variability is visible. When the intervals over samples and over seeds disagree, the wider one governs.
+**Additionally (always):** bootstrap interval over samples for `d` in each seed (95%), so that the contribution of test-set variability is visible. The two intervals compared are the t interval over seeds and the bootstrap interval of the seed mean (test samples resampled within each seed); the wider one governs.
 
 **A null result is a result.** If H1 is not supported, the report states this and shows the distributions of `d`. The endpoint, the level and the set of axes must not be changed after looking at the results.
 
@@ -215,7 +227,7 @@ For N = 2 000 (reference size). H1 is considered supported when all of the follo
 | Threat | Handling |
 |---|---|
 | Constraints consistent with the generator (κ ≥ 0 always true in this family) | Described in the thesis. The conclusion concerns correct constraints; it does not study harm from incorrect ones. Optionally an axis with a component of κ < 0 (§15, item 4) |
-| Inverse crime | `A_truth` ≠ `A_model` by construction; S4 measures the difference |
+| Inverse crime | `A_truth` ≠ `A_model` by construction, but they differ only in resolution and source sampling (§5.1); S4 measures the effect |
 | Baseline tuning | Equal tuning budget (§7.1) |
 | OOD leakage into tuning | OOD touched only in the final evaluation; checkpoint chosen on val (ID) |
 | Narrow training family | Stated explicitly in the scope of conclusions (§12) |
@@ -239,19 +251,28 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-11 | Runtime estimate correction in §15 item 1 | Profiling and smoke tests measured ~0.32 s/step (~72 min/run instead of <8 min; ~116 h total on GTX 1660) | None; concerns computational schedule only, not hypotheses, decision rules, or metrics |
 | 2026-11-12 | Fixed pipe characters in §8 (M1 row) | Added backslashes before vertical bars (`\|r_ell − θ_E\|`) to prevent Markdown table splitting | None; formatting fix only |
 | 2026-11-12 | Clarified training vs. evaluation time breakdown in §15 item 1 | Separated pure training step time (~0.32 s/step) from validation evaluations (25 × ~12 s), which sum to ~72 min/run | None; wording precision in compute budget only |
+| 2026-11-12 | OOD generation details in §6: A1 band semantics, A2 normalization, A3 Plummer (b = peak deflection, a = 0.1″, centre position), A4 Gaussians and flux-weighted centroid, auxiliary draws via `SeedSequence([seed, axis_id, level])` | Decisions taken before data generation but not logged; text now matches `generator.py` | None on hypotheses; describes the datasets as generated |
+| 2026-11-12 | Metric definitions in §8: M1b (mean error vector in the band subtracted, denominator unchanged), M5 (`A_model` with PSF 0.10″ on every axis, arc mask `clean_lensed > 3σ_true`, empty mask = NaN + nanmedian), M6 (strict κ < 0) | Decisions taken when implementing the metrics, before any evaluation | Fixes metrics before results are seen |
+| 2026-11-12 | Decision rules in §10: H2 as per-seed regression with t interval (4 df); H3 decided at N = 2 000; the "wider interval" compares the t interval over seeds with the bootstrap interval of the seed mean; Holm over 18 tests | Removes ambiguity in the decision rules | Rules fixed before evaluation |
+| 2026-11-12 | Tuning procedure in §7.1: V1–V3 inherit lr from V0, V3 also wd; grid not extended when the optimum is on its edge | Matches `scripts/tune.py`; inheritance agreed before tuning | Fixed before the first tuning run |
+| 2026-11-12 | S4 procedure in §9: all splits regenerated with `A_model` on E-main seeds, `tuned.yaml` without separate tuning, seeds 42–46, `data_s4/`, tag S4 | Makes the control experiment fully specified | None on E-main |
+| 2026-11-12 | Kneg axis specified in §15 item 4 (mirror of A3 with b < 0, outside E1, `DIAG_LEVELS`; L1 borderline accepted); §2 note on κ ≥ 0 updated | Specifies the optional axis from §11 | Diagnostic only, outside E1 |
+| 2026-11-12 | Descriptive clarifications in §5.1, §5.2, §7, §11 and §14: operator difference, `extent` as half-width, source angle range, network input and output, OneCycleLR defaults, gradient clipping at 1.0, dropped incomplete batch, evaluation every 500 steps, logging of step and reference epoch, GPU non-determinism | The text did not describe what the code does | None; descriptive only |
+| 2026-11-12 | Wording of §15 item 3 aligned with the Polish version (mean of log-ratios d) | Language versions disagreed in precision | None |
 
 ## 14. Reproducibility
 
 - All parameters in `configs/*.yaml`. The report contains the config hash and the commit hash.
 - Datasets stored on disk with a checksum. Tests: disjointness, reproducibility, agreement of the `A_truth` / `A_model` grids.
 - `scripts/make_tables.py` reproduces every table and figure from the stored checkpoints, with no manual steps.
-- For each checkpoint we record: variant, N, seed, configuration, `val_select` and epoch number.
+- For each checkpoint we record: variant, N, seed, configuration, `val_select`, step and reference epoch (step / 500, i.e. epochs at N = 8 000).
+- Datasets and initialization are bit-for-bit reproducible; GPU training is not (non-deterministic FFT and `grid_sample` backward kernels), so repeated runs with the same seed may differ slightly.
 - Weights in `SpectralConv2d` are flattened to shape `(modes1 * modes2, in_channels, out_channels)` for computational acceleration via `torch.bmm` instead of `einsum` (numerically equivalent, distinct `state_dict` key layout).
 
 ## 15. Decisions Prior to Freezing (Resolved)
 
 1. **Seed count and compute feasibility:** Confirmed 5 seeds (42–46) and 60 training runs in E-main. On an NVIDIA GTX 1660, a single FNO training run of 12,500 steps takes ~72 minutes (12,500 steps at ~0.32 s/step plus 25 evaluations at ~12 s each), requiring ~72 hours total for E-main (~116 hours including the 36-run tuning phase). Originally estimated at 7–8 hours total. 5 seeds provide 4 degrees of freedom in the t-distribution ($t_{0.05} = 2.776$), ensuring statistical power.
 2. **Significance thresholds:** The 5% improvement threshold (`ln ≤ -0.051`) and 5% non-inferiority bound (`ln ≤ +0.049`) in §10 are frozen.
-3. **Axis A1 aggregation:** Axis A1 enters composite endpoint E1 as a single aggregated axis (unweighted mean of its four constituent parameter sweeps).
-4. **Negative mass axis (κ < 0):** Added strictly as a standalone diagnostic control outside E1 to assess model behavior under violated prior assumptions.
+3. **Axis A1 aggregation:** Axis A1 enters composite endpoint E1 as a single aggregated axis (arithmetic mean of the log-ratios d of its four sub-axes: θ_E, q, shear and source position).
+4. **Negative mass axis (κ < 0):** Added strictly as a standalone diagnostic control outside E1 to assess model behavior under violated prior assumptions. Implemented as an exact mirror of A3 (same draw stream, a = 0.1″, sign of b reversed), kept outside E1 and outside `N_LEVELS` (separate `DIAG_LEVELS`). At L1 roughly half of the samples violate κ ≥ 0; this borderline level is accepted.
 5. **Detector gain:** Frozen at `gain = 500.0`, maintaining a realistic Poisson shot-noise regime in high-magnification arcs.

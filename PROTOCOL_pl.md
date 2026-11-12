@@ -22,7 +22,7 @@ Nie pytamy o szybkość ani o porównanie z dopasowaniem parametrycznym. Interes
 |---|---|---|
 | `L_sup` | `relL2(źródło) + 2·relL2(α)`, gdzie `α = ∇ψ` (różnice centralne) | ψ jest nadzorowane tylko przez α, więc stała w ψ jest swobodna |
 | `L_ray` | średnia odporna wartość pullu: `2c²·(√(1 + (pull/c)²) − 1)`, gdzie `pull = (I_rekonstr − I_obs)/σ̂`, `c = 10` | σ̂ szacowana z obserwacji (`noise.py`), nie z czystego obrazu; asymptotyka `pull²` dla małych wartości i `2c·\|pull\|` dla anomalii |
-| `L_pos` | średnia `ReLU(−κ)²`, `κ = ½∇²ψ`, wnętrze siatki bez 2 pikseli brzegu | **κ ≥ 0 jest własnością całej rodziny danych (w tym wszystkich osi OOD), więc więzy są poprawne, ale zgodne z generatorem** (§11) |
+| `L_pos` | średnia `ReLU(−κ)²`, `κ = ½∇²ψ`, wnętrze siatki bez 2 pikseli brzegu | **κ ≥ 0 jest własnością całej rodziny danych (w tym wszystkich osi OOD A1–A6), więc więzy są poprawne, ale zgodne z generatorem** (§11); jedynym wyjątkiem jest diagnostyczna oś Kneg poza E1 (§15, pkt 4) |
 
 **Warianty** (jedna architektura, jeden dataset, jedna procedura):
 
@@ -61,13 +61,13 @@ Przewidywania kierunkowe, **eksploracyjne** (bez korekty wielokrotnych porówna�
 ## 5. Fizyka i dane
 
 ### 5.1 Operatory w przód
-- **`A_truth`** (generuje wszystkie obserwacje): siatka 255×255 (węzły pokrywają się z co drugim węzłem siatki 128), PSF Gaussa o FWHM 0.10″, próbkowanie `[::2]` do siatki 128×128.
+- **`A_truth`** (generuje wszystkie obserwacje): siatka 255×255 (co drugi węzeł pokrywa się z węzłem siatki 128), PSF Gaussa o FWHM 0.10″, próbkowanie `[::2]` do siatki 128×128.
 - **`A_model`** (używany w `L_ray`): siatka 128×128, PSF 0.10″, interpolacja dwuliniowa.
 
-Obserwacje nigdy nie są generowane operatorem użytym w stracie. To wyklucza *inverse crime* z konstrukcji. Wrażliwość na ten wybór sprawdza S4 (§9).
+Obserwacje nigdy nie są generowane operatorem użytym w stracie. To wyklucza *inverse crime* w ścisłym sensie. Różnica między operatorami jest jednak mała: oba używają tego samego tracera, tego samego PSF, interpolacji dwuliniowej i α z różnic centralnych próbkowanego ψ. Różnią się tylko rozdzielczością (255 kontra 128) i tym, że `A_truth` próbkuje źródło analitycznie na gęstej siatce. Ochrona jest więc słaba, a S4 (§9) mierzy, na ile wynik od niej zależy.
 
 ### 5.2 Rodzina treningowa (ID)
-Siatka 128×128, `extent = 3.0″` (krok 47.24 mas), gain 500, szum `σ² = σ₀² + max(F,0)/gain`, `σ₀ ~ U(0.01, 0.03)` na próbkę.
+Siatka 128×128, `extent = 3.0″` (połowa szerokości pola, czyli ±3″; krok 47.24 mas), gain 500, szum `σ² = σ₀² + max(F,0)/gain`, `σ₀ ~ U(0.01, 0.03)` na próbkę.
 
 | Parametr | Zakres treningowy |
 |---|---|
@@ -82,6 +82,7 @@ Siatka 128×128, `extent = 3.0″` (krok 47.24 mas), gain 500, szum `σ² = σ�
 | n | 0.8-2.5 |
 | pozycja źródła | −0.4-0.4 |
 | q źródła | 0.5-0.9 |
+| kąt źródła | 0-π |
 
 Wszystkie zakresy są zapisane w `configs/prior.yaml`. Żaden skrypt nie przepisuje ich ręcznie.
 
@@ -103,24 +104,33 @@ Zbiory OOD są dotykane **tylko** w ostatecznej ewaluacji. Nie służą do wybor
 
 | Oś | Zmiana | Poziomy (łagodny / umiarkowany / silny) |
 |---|---|---|
-| A1 parametry | ekstrapolacja jednego parametru: θ_E (w górę), q (w dół), shear (obustronnie), pozycja źródła (obustronnie) | wyjście poza zakres o 25% / 50% / 100% szerokości zakresu |
-| A2 profil | nachylenie `ψ ∝ r^s`, s ∈ [1−δ, 1+δ] | δ = 0.1 / 0.2 / 0.3 |
-| A3 substruktura | dodatkowy człon Plummera o amplitudzie b przy pierścieniu | b ∈ [0.02, 0.05] / [0.05, 0.12] / [0.12, 0.25] |
+| A1 parametry | ekstrapolacja jednej grupy parametrów: θ_E (w górę), q (w dół), shear γ₁ i γ₂ razem (obustronnie), pozycja źródła x i y razem (obustronnie) | wartości losowane jednostajnie z pasa o szerokości 25% / 50% / 100% szerokości zakresu, tuż za jego granicą |
+| A2 profil | nachylenie `ψ = θ_E^(2−s)·r^s/s`, s ∈ [1−δ, 1+δ] | δ = 0.1 / 0.2 / 0.3 |
+| A3 substruktura | dodatkowy człon Plummera o amplitudzie b przy pierścieniu (b = szczytowe ugięcie [arcsec], rdzeń a = 0.1″) | b ∈ [0.02, 0.05] / [0.05, 0.12] / [0.12, 0.25] |
 | A4 źródło | 3 gaussy zamiast Sérsica | 1 poziom (stały, wchodzi do E1) |
 | A5 szum | `σ₀` poza zakresem treningowym | 0.005 / 0.05 / 0.08 |
 | A6 operator | A_truth z PSF 0.12″ zamiast 0.10″ (niedopasowanie do A_model) | PSF 0.12″ (umiarkowany / L1, wchodzi do E1) / 0.15″ (silny / L2) |
 
 Dla każdej osi raportujemy krzywą dawka-odpowiedź (metryka vs poziom), a nie pojedynczy punkt.
 
+Szczegóły generatora (`src/data/generator.py`):
+- **A1:** każdy poziom losuje parametr jednostajnie z pasa o szerokości f·w tuż za granicą zakresu treningowego (f = 0.25 / 0.5 / 1.0, w = szerokość zakresu). Na osiach obustronnych stronę wyznacza bazowe losowanie danej składowej: u < 0.5 poniżej zakresu, u ≥ 0.5 powyżej. Pozostałe parametry mają wartości z test ID. A1 wchodzi do E1 jako jedna oś (§15, pkt 3).
+- **A2:** normalizacja `θ_E^(2−s)` utrzymuje promień Einsteina równy θ_E dla każdego s.
+- **A3:** `ψ_sub = b·a·ln(|θ − θ_s|² + a²)` z a = 0.1″, więc b jest szczytowym ugięciem perturbacji. Środek θ_s leży w odległości θ_E·U(0.6, 1.2) od środka siatki (nie od środka soczewki), pod kątem U(0, 2π).
+- **A4:** trzy gaussy o amplitudzie U(0.5, 1), położeniu U(−0.4, 0.4)″ i szerokości σ U(0.08, 0.2)″. Środek źródła używany w M2 i M4b to centroid ważony strumieniem (wagi a·σ²).
+- **Losowania pomocnicze** dla A2–A4 pochodzą z `np.random.SeedSequence([seed, axis_id, level])`, więc nie zużywają bazowego strumienia (u, z) i parowanie z test ID zostaje zachowane.
+
 ## 7. Modele i trening
 
 - **Architektura (główna):** FNOLensingReconstructor (modes = 32, width = 64, pad_ratio = 0.25). Nie zmieniamy jej między wariantami.
+- **Wejście i wyjście:** sieć widzi tylko `observed` (plus dwa kanały współrzędnych), bez `noise_map`. Wyjście ψ jest centrowane (odejmowana średnia po siatce); wyjście źródła przechodzi przez Softplus, więc jest nieujemne.
 - **Architektura (kontrolna, S2):** U-Net/CNN o zbliżonej liczbie parametrów, tylko V0 i V3 przy N = 2 000. Sprawdza, czy wnioski nie dotyczą wyłącznie FNO.
 - **Budżet:** stała liczba kroków optymalizatora dla wszystkich N (12 500 kroków, batch 16; dla N = 8 000 odpowiada to ok. 25 epokom). Mniejsze N oznaczają więcej epok.
-- **Optymalizator:** AdamW + OneCycleLR (parametry strojone w §7.1).
+- **Optymalizator:** AdamW + OneCycleLR z domyślnymi ustawieniami PyTorch (pct_start = 0.3, wygaszanie cosinusowe, div_factor = 25, final_div_factor = 10⁴) i max_lr = lr (strojone w §7.1); norma gradientu przycinana do 1.0.
 - **Rozgrzewka członów fizycznych:** `warm(step) = clip((step − 1500) / 1500, 0, 1)`, co odpowiada 0 przez pierwsze 1 500 kroków (3 epoki przy bazowym N = 8 000, batch 16) i liniowemu wzrostowi do 1.0 w krokach 1 500–3 000 dla wszystkich N.
 - **Seedy:** 5 seedów ewaluacyjnych (42-46). Seed steruje inicjalizacją i kolejnością danych. Ten sam seed daje tę samą inicjalizację we wszystkich wariantach (porównanie sparowane).
-- **Wybór checkpointu:** wspólne kryterium dla wszystkich wariantów, `val_select = relL2(źródło) + 2·relL2(α)` na val (ID). Człony `L_ray` i `L_pos` nie wchodzą do kryterium.
+- **Kolejność danych:** każda epoka to nowa permutacja N próbek treningowych (generator z seedem przebiegu); niepełny ostatni batch epoki jest pomijany.
+- **Wybór checkpointu:** wspólne kryterium dla wszystkich wariantów, `val_select = relL2(źródło) + 2·relL2(α)` na val (ID). Człony `L_ray` i `L_pos` nie wchodzą do kryterium. Ewaluacja co 500 kroków (25 ewaluacji na trening); zachowujemy najlepszy checkpoint.
 
 ### 7.1 Strojenie (równy budżet)
 Strojenie na **val (ID)**, N = 2 000, **osobnym seedem 100** (poza seedami ewaluacji). Każdy wariant dostaje 9 konfiguracji:
@@ -131,6 +141,8 @@ Strojenie na **val (ID)**, N = 2 000, **osobnym seedem 100** (poza seedami ewalu
 | V1 | λ_pos ∈ {1, 15, 50} × wd ∈ {1e-4, 1e-3, 1e-2} |
 | V2 | λ_ray ∈ {0.005, 0.02, 0.1} × wd ∈ {1e-4, 1e-3, 1e-2} |
 | V3 | λ_ray ∈ {0.005, 0.02, 0.1} × λ_pos ∈ {1, 15, 50} |
+
+V1–V3 biorą lr wybrane dla V0; V3 bierze z V0 także wd. Jeśli optimum leży na krawędzi siatki, siatki nie rozszerzamy; raportujemy to razem z wynikami.
 
 Wybrana konfiguracja jest stała dla wszystkich N i seedów. Chodzi o to, żeby baseline nie był niedoregularyzowany względem wariantów z członami fizycznymi.
 
@@ -149,7 +161,7 @@ Wszystkie liczone **per próbka** (nie jako średnie z batchy), na siatce 128×1
 
 | ID | Definicja |
 |---|---|
-| M1b | jak M1, po odjęciu stałej składowej deflekcji (usuwa degenerację z translacją źródła) |
+| M1b | jak M1, po odjęciu od błędu średniego wektora błędu ugięcia w pasie (mianownik bez zmian; usuwa degenerację z translacją źródła) |
 | M3 | `relL2(ψ)` po usunięciu stałej (gauge-fixed) |
 | M4 | `relL2(α)` na całym polu (do porównania z M1) |
 | M4b | błąd centroidu źródła [mas] i błąd strumienia w tej samej aperturze (bez progu względnego) |
@@ -158,8 +170,8 @@ Wszystkie liczone **per próbka** (nie jako średnie z batchy), na siatce 128×1
 
 | ID | Definicja |
 |---|---|
-| M5 | `χ²` nieobcięte, osobno na masce łuku (`F_czyste > 3σ`) i globalnie, z σ szacowaną z obserwacji (σ oracle tylko jako kontrola) |
-| M6 | udział pikseli z `κ < 0` we wnętrzu siatki |
+| M5 | `χ²` nieobcięte liczone z `A_model` (PSF 0.10″ na każdej osi, także na A6), osobno na masce łuku (`clean_lensed > 3σ_prawdziwe`) i globalnie, z σ szacowaną z obserwacji (σ oracle tylko jako kontrola); pusta maska łuku daje NaN, agregacja przez nanmedian |
+| M6 | udział pikseli ze ściśle `κ < 0` (κ = 0 się nie liczy) we wnętrzu siatki |
 
 **Miara uogólnienia:** `R[v,a] = M1[v,a] / M1[v,ID]` (stosunek błędu na osi do błędu ID) oraz bezwzględne `M1[v,a]`. Raportujemy oba, bo sama luka `R` może maleć, gdy pogarsza się ID.
 
@@ -171,7 +183,7 @@ Wszystkie liczone **per próbka** (nie jako średnie z batchy), na siatce 128×1
 | S1 | V2 i V3 z obcięciem χ² (`chi2_mode = clamp`, max 100) zamiast pseudo-Hubera, N = 2 000 | czułość na sposób obcięcia χ² |
 | S2 | U-Net/CNN, V0 vs V3, N = 2 000 | czułość na architekturę |
 | S3 | σ oracle zamiast σ szacowanej w `L_ray` (V2, V3) | czułość na szum |
-| S4 | obserwacje z `A_model` (wariant z *inverse crime*), V0 vs V3, N = 2 000 | ile wyników zależy od zgodności operatorów |
+| S4 | obserwacje z `A_model` (wariant z *inverse crime*), V0 vs V3, N = 2 000; wszystkie podziały (train, val, test ID, OOD) generowane od nowa przez `A_model` na seedach z E-main, konfiguracje z `tuned.yaml` bez osobnego strojenia, seedy 42–46, dane w `data_s4/`, treningi z tagiem S4 | ile wyników zależy od zgodności operatorów |
 | X1 | V4 (bez etykiet), N = 2 000 | eksploracyjny |
 | X2 | rozszerzenie półnadzorowane: `L_ray` i `L_pos` na wszystkich 8 000 obserwacjach, `L_sup` na pierwszych N | eksploracyjny (miesza więzy z dodatkowymi danymi) |
 
@@ -200,13 +212,13 @@ Dla N = 2 000 (rozmiar odniesienia). H1 uznajemy za poparte, gdy jednocześnie:
 2. 95% przedział ufności dla średniej (rozkład t, 4 stopnie swobody) nie zawiera 0,
 3. `E1[s] < 0` w co najmniej 4 z 5 seedów.
 
-**H2.** Nachylenie `E1` względem `log N` (regresja po seedach), z przedziałem ufności. Poparte, gdy przedział nie zawiera 0 i znak jest zgodny z hipotezą.
+**H2.** Nachylenie `E1` względem `log N`, dopasowane osobno w każdym seedzie (3 punkty na seed); średnie nachylenie po seedach z 95% przedziałem t (4 stopnie swobody). Poparte, gdy przedział nie zawiera 0 i znak jest zgodny z hipotezą.
 
-**H3.** Różnica na ID `d[s,ID]` dla M1 i M2: nie-pogorszenie, gdy górna granica 95% CI `≤ log(1.05)`.
+**H3.** Różnica na ID `d[s,ID]` dla M1 i M2: nie-pogorszenie, gdy górna granica 95% CI `≤ log(1.05)`. Rozstrzygane przy N = 2 000.
 
-**Osie osobno, składniki osobno (V1, V2 vs V0)** są analizami drugorzędnymi: korekta Holma na rodzinę (6 osi × 3 porównania), oznaczone jako takie w raporcie. Nie służą do potwierdzania H1.
+**Osie osobno, składniki osobno (V1, V2 vs V0)** są analizami drugorzędnymi: korekta Holma na rodzinę (6 osi × 3 porównania = 18 testów), oznaczone jako takie w raporcie. Nie służą do potwierdzania H1.
 
-**Dodatkowo (zawsze):** przedział bootstrapowy po próbkach dla `d` w każdym seedzie (95%), żeby było widać wkład zmienności zbioru testowego. Przy rozbieżności między przedziałami po próbkach i po seedach decyduje szerszy.
+**Dodatkowo (zawsze):** przedział bootstrapowy po próbkach dla `d` w każdym seedzie (95%), żeby było widać wkład zmienności zbioru testowego. Porównujemy przedział t po seedach z przedziałem bootstrapowym średniej po seedach (próbki testowe losowane ze zwracaniem w obrębie każdego seeda); decyduje szerszy.
 
 **Wynik zerowy jest wynikiem.** Jeśli H1 nie jest poparta, raport tak to stwierdza i pokazuje rozkłady `d`. Nie wolno zmieniać punktu końcowego, poziomu ani zbioru osi po obejrzeniu wyników.
 
@@ -215,7 +227,7 @@ Dla N = 2 000 (rozmiar odniesienia). H1 uznajemy za poparte, gdy jednocześnie:
 | Zagrożenie | Postępowanie |
 |---|---|
 | Więzy zgodne z generatorem (κ ≥ 0 zawsze prawdziwe w tej rodzinie) | Opisujemy w pracy. Wniosek dotyczy więzów poprawnych; nie bada szkód od więzów błędnych. Opcjonalnie oś ze składnikiem o κ < 0 (§15, pkt 4) |
-| Inverse crime | `A_truth` ≠ `A_model` z konstrukcji; S4 mierzy różnicę |
+| Inverse crime | `A_truth` ≠ `A_model` z konstrukcji, ale różnią się tylko rozdzielczością i próbkowaniem źródła (§5.1); S4 mierzy efekt |
 | Dostrojenie baseline | Równy budżet strojenia (§7.1) |
 | Wyciek OOD do strojenia | OOD dotykane tylko w finalnej ewaluacji; checkpoint po val (ID) |
 | Wąska rodzina treningowa | Jawne w zakresie wniosków (§12) |
@@ -239,13 +251,22 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | 2026-11-11 | Korekta szacunku czasu w §15 pkt 1 | Profiler i smoke test wykazały ~0.32 s/krok (~72 min/trening zamiast <8 min; łącznie ~116 h na GTX 1660) | Brak; dotyczy planu obliczeń, nie hipotez, reguł decyzyjnych ani metryk |
 | 2026-11-12 | Poprawa zapisu modułu w §8 (wiersz M1) | Dodanie ukośników przy pionowych kreskach (`\|r_ell − θ_E\|`), żeby nie rozbijało tabeli w Markdownie | Brak; poprawka formatowania |
 | 2026-11-12 | Doprecyzowanie rozbicia czasu treningu i ewaluacji w §15 pkt 1 | Rozdzielenie czasu samego kroku treningowego (~0.32 s/krok) od czasu ewaluacji (25 × ~12 s), które łącznie dają ~72 min/trening | Brak; korekta precyzji opisu budżetu obliczeń |
+| 2026-11-12 | Szczegóły generowania osi OOD w §6: znaczenie pasa A1, normalizacja A2, Plummer w A3 (b = szczytowe ugięcie, a = 0.1″, położenie środka), gaussy A4 i centroid ważony strumieniem, losowania pomocnicze przez `SeedSequence([seed, axis_id, level])` | Decyzje podjęte przed generowaniem danych, ale niezapisane; tekst zgodny z `generator.py` | Brak wpływu na hipotezy; opisuje zbiory w postaci, w jakiej je wygenerowano |
+| 2026-11-12 | Definicje metryk w §8: M1b (odjęcie średniego wektora błędu w pasie, mianownik bez zmian), M5 (`A_model` z PSF 0.10″ na każdej osi, maska łuku `clean_lensed > 3σ_prawdziwe`, pusta maska = NaN + nanmedian), M6 (ściśle κ < 0) | Decyzje podjęte przy implementacji metryk, przed jakąkolwiek ewaluacją | Metryki ustalone przed obejrzeniem wyników |
+| 2026-11-12 | Reguły decyzyjne w §10: H2 jako regresja per seed z przedziałem t (4 df); H3 rozstrzygane przy N = 2 000; „szerszy przedział” porównuje przedział t po seedach z bootstrapem średniej po seedach; Holm po 18 testach | Usunięcie niejednoznaczności reguł decyzyjnych | Reguły ustalone przed ewaluacją |
+| 2026-11-12 | Procedura strojenia w §7.1: V1–V3 dziedziczą lr z V0, V3 także wd; siatki nie rozszerzamy, gdy optimum leży na krawędzi | Zgodność z `scripts/tune.py`; dziedziczenie uzgodnione przed strojeniem | Ustalone przed pierwszym przebiegiem strojenia |
+| 2026-11-12 | Procedura S4 w §9: wszystkie podziały od nowa z `A_model` na seedach E-main, `tuned.yaml` bez osobnego strojenia, seedy 42–46, `data_s4/`, tag S4 | Pełna specyfikacja eksperymentu kontrolnego | Brak wpływu na E-main |
+| 2026-11-12 | Specyfikacja osi Kneg w §15 pkt 4 (lustro A3 z b < 0, poza E1, `DIAG_LEVELS`; graniczny L1 zaakceptowany); aktualizacja uwagi o κ ≥ 0 w §2 | Doprecyzowanie opcjonalnej osi z §11 | Tylko diagnostyka, poza E1 |
+| 2026-11-12 | Doprecyzowania opisowe w §5.1, §5.2, §7, §11 i §14: różnica operatorów, `extent` jako połowa szerokości, zakres kąta źródła, wejście i wyjście sieci, domyślne ustawienia OneCycleLR, przycinanie gradientu do 1.0, pomijany niepełny batch, ewaluacja co 500 kroków, zapis kroku i epoki referencyjnej, niedeterminizm GPU | Tekst nie opisywał tego, co robi kod | Brak; zmiany wyłącznie opisowe |
+| 2026-11-12 | Ujednolicenie brzmienia §15 pkt 3 w wersji angielskiej z polską (średnia ilorazów logarytmicznych d) | Wersje językowe różniły się precyzją | Brak |
 
 ## 14. Reprodukowalność
 
 - Wszystkie parametry w `configs/*.yaml`. Raport zawiera hash konfiguracji i commita.
 - Zbiory zapisane na dysku z sumą kontrolną. Testy: rozłączność, odtwarzalność, zgodność siatek `A_truth` / `A_model`.
 - `scripts/make_tables.py` odtwarza każdą tabelę i rysunek z zapisanych checkpointów, bez ręcznych kroków.
-- Dla każdego checkpointu zapisujemy: wariant, N, seed, konfigurację, `val_select` i numer epoki.
+- Dla każdego checkpointu zapisujemy: wariant, N, seed, konfigurację, `val_select`, krok i epokę referencyjną (krok / 500, czyli epoki przy N = 8 000).
+- Zbiory danych i inicjalizacja są bitowo powtarzalne; trening na GPU nie jest (niedeterministyczne jądra FFT i backward `grid_sample`), więc powtórzone treningi z tym samym seedem mogą się minimalnie różnić.
 - Wagi warstwy `SpectralConv2d` są spłaszczone do kształtu `(modes1 * modes2, in_channels, out_channels)` pod akcelerację obliczeń przez `torch.bmm` zamiast operacji `einsum` (równoważne numerycznie, inny format kluczy w `state_dict`).
 
 ## 15. Rozstrzygnięcia decyzji (stan zamrożony)
@@ -253,5 +274,5 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 1. **Liczba seedów i wykonalność obliczeniowa:** Utrzymujemy 5 seedów (42–46) i pełną macierz 60 treningów w E-main. Pojedynczy trening FNO przy 12 500 krokach na karcie GTX 1660 zajmuje około 72 minut (12 500 kroków po ~0.32 s plus 25 ewaluacji po ~12 s), co daje łącznie około 72 godzin obliczeń dla E-main (~116 godzin z fazą 36 przebiegów strojenia). Pierwotnie szacowano 7–8 godzin łącznie. Pięć seedów zapewnia 4 stopnie swobody w teście t-Studenta ($t_{0.05} = 2.776$), chroniąc analizę przed nadmiernie szerokimi przedziałami ufności typowymi dla 3 seedów.
 2. **Progi istotności:** Zatwierdzamy próg poprawy $\ge 5\%$ ($\log \le -0.051$) oraz próg nie-pogorszenia $\le 5\%$ ($\log \le +0.049$). W obszarze pierścienia Einsteina różnica 5% w błędzie kąta ugięcia odpowiada fizycznie przesunięciom kaustyk o kilka milisekund łuku, co stanowi próg istotny astrofizycznie i leżący powyżej szumu samej dyskretyzacji.
 3. **Agregacja osi A1:** Oś A1 wchodzi do głównego punktu końcowego E1 jako pojedyncza oś, liczona jako średnia arytmetyczna z logarytmicznych ilorazów dla jej czterech podosi: $\theta_E$, $q$, $\gamma$ oraz położenia źródła. Zapobiega to sytuacji, w której ekstrapolacja granic generatora dominuje nad strukturalnymi osiami OOD (substruktury, profil, operator).
-4. **Oś z masą ujemną $\kappa < 0$:** Dodajemy oś kontrolną z profilem o lokalnie ujemnej gęstości masy, lecz traktujemy ją wyłącznie jako osobną analizę czułości poza głównym punktem końcowym E1. Pozwala to jawnie wykazać w dyskusji ewentualny bias wprowadzany przez człon $L_{\mathrm{pos}}$ przy złamaniu założeń generatora, bez zniekształcania konfirmacyjnego testu hipotezy H1.
+4. **Oś z masą ujemną $\kappa < 0$:** Dodajemy oś kontrolną z profilem o lokalnie ujemnej gęstości masy, lecz traktujemy ją wyłącznie jako osobną analizę czułości poza głównym punktem końcowym E1. Pozwala to jawnie wykazać w dyskusji ewentualny bias wprowadzany przez człon $L_{\mathrm{pos}}$ przy złamaniu założeń generatora, bez zniekształcania konfirmacyjnego testu hipotezy H1. Realizacja: dokładne lustro A3 (ten sam strumień losowań, a = 0.1″, odwrócony znak b), poza E1 i poza `N_LEVELS` (osobne `DIAG_LEVELS`). Na poziomie L1 mniej więcej połowa próbek łamie κ ≥ 0; ten graniczny poziom jest zaakceptowany.
 5. **Wzmocnienie detektora:** Pozostawiamy parametr `gain = 500.0`. W przyjętym układzie jednostek zapewnia to realistyczny stosunek, w którym szum fotonowy w jasnych partiach łuków dominuje nad szumem tła i odczytu o czynnik 2–3, zgodnie ze specyfiką głębokich ekspozycji kosmicznych.
