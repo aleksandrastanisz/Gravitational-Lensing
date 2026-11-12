@@ -1,0 +1,7 @@
+# Tested with Python 3.12.10 on Windows, NVIDIA GTX 1660.
+# CUDA 12.4 build of PyTorch:
+# pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0
+numpy==2.5.4
+pyyaml==6.0.3
+pytest==9.2.0
