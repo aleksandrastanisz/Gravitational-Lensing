@@ -220,7 +220,7 @@ For N = 2 000 (reference size). H1 is considered supported when all of the follo
 
 **Individual axes and individual components (V1, V2 vs V0)** are secondary analyses: Holm correction over the family (6 axes × 3 comparisons = 18 tests), labelled as such in the report. They are not used to confirm H1.
 
-**Additionally (always):** bootstrap interval over samples for `d` in each seed (95%), so that the contribution of test-set variability is visible. The two intervals compared are the t interval over seeds and the bootstrap interval of the seed mean (test samples resampled within each seed); the wider one governs.
+**Additionally (always):** bootstrap interval over samples for `d` in each seed (95%), so that the contribution of test-set variability is visible. The two intervals compared are the t interval over seeds and the bootstrap interval of the seed mean; the wider one governs, for criterion 2 of H1 and for H3 (H2 uses the t interval). In each bootstrap replicate one set of test-sample indices is drawn and shared by all seeds, both variants and all sets, because the test set is common to them and OOD sets are paired with test ID; percentile interval, 10 000 replicates. Secondary tests are two-sided one-sample t tests over seeds (4 df) on the axis effect, Holm-adjusted at α = 0.05.
 
 **A null result is a result.** If H1 is not supported, the report states this and shows the distributions of `d`. The endpoint, the level and the set of axes must not be changed after looking at the results.
 
@@ -273,6 +273,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-12 | X1 (V4) specified in §9: λ from tuned V3, checkpoint by `val_select` | Keeps the common selection criterion of §7; the use of labelled validation data is disclosed | Exploratory only |
 | 2026-11-12 | X3 added to §9: one repeat of the selected V0 and V3 tuning configurations | GPU non-determinism produced differences of ~0.01–0.015 in `val_select` between tuning runs mid-training | Descriptive; tuning choice unchanged |
 | 2026-11-12 | X4 added to §9: conditional control with a non-physical smoothness penalty, grid rule fixed in advance | Addresses the threat "physics terms as generic regularizers" (§11); registered before any tuning result of V1–V3 or any test result | Exploratory; runs only if H1 is supported |
+| 2026-11-12 | Bootstrap and interval rules specified in §10: indices shared across seeds, variants and sets (previously "within each seed"); percentile interval, 10 000 replicates; wider-of rule applies to H1 criterion 2 and H3; secondary tests are one-sample t tests with Holm at α = 0.05 | Implementation of §10 in `src/evaluation/stats.py`; resampling independently per seed would treat one common test set as five and understate test-set variability | Fixes the statistical procedure before any test result; implementation verified on synthetic data with known effects |
 
 ## 14. Reproducibility
 

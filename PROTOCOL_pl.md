@@ -220,7 +220,7 @@ Dla N = 2 000 (rozmiar odniesienia). H1 uznajemy za poparte, gdy jednocześnie:
 
 **Osie osobno, składniki osobno (V1, V2 vs V0)** są analizami drugorzędnymi: korekta Holma na rodzinę (6 osi × 3 porównania = 18 testów), oznaczone jako takie w raporcie. Nie służą do potwierdzania H1.
 
-**Dodatkowo (zawsze):** przedział bootstrapowy po próbkach dla `d` w każdym seedzie (95%), żeby było widać wkład zmienności zbioru testowego. Porównujemy przedział t po seedach z przedziałem bootstrapowym średniej po seedach (próbki testowe losowane ze zwracaniem w obrębie każdego seeda); decyduje szerszy.
+**Dodatkowo (zawsze):** przedział bootstrapowy po próbkach dla `d` w każdym seedzie (95%), żeby było widać wkład zmienności zbioru testowego. Porównujemy przedział t po seedach z przedziałem bootstrapowym średniej po seedach; decyduje szerszy, w kryterium 2 dla H1 oraz dla H3 (H2 używa przedziału t). W każdej replikacji bootstrapu losujemy jeden zestaw indeksów próbek testowych, wspólny dla wszystkich seedów, obu wariantów i wszystkich zbiorów, bo zbiór testowy jest dla nich wspólny, a zbiory OOD są sparowane z test ID; przedział percentylowy, 10 000 replikacji. Testy drugorzędne to dwustronne testy t dla jednej próby po seedach (4 df) na efekcie osi, z poprawką Holma przy α = 0.05.
 
 **Wynik zerowy jest wynikiem.** Jeśli H1 nie jest poparta, raport tak to stwierdza i pokazuje rozkłady `d`. Nie wolno zmieniać punktu końcowego, poziomu ani zbioru osi po obejrzeniu wyników.
 
@@ -273,6 +273,7 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | 2026-11-12 | Doprecyzowanie X1 (V4) w §9: λ z dostrojonego V3, checkpoint przez `val_select` | Zachowuje wspólne kryterium wyboru z §7; użycie oznaczonych danych walidacyjnych jest jawne | Wyłącznie eksploracyjne |
 | 2026-11-12 | Dodanie X3 do §9: jedno powtórzenie wybranych konfiguracji strojenia V0 i V3 | Niedeterminizm GPU dał różnice ~0.01–0.015 w `val_select` między przebiegami strojenia w połowie treningu | Opisowe; wybór ze strojenia bez zmian |
 | 2026-11-12 | Dodanie X4 do §9: warunkowa kontrola z niefizyczną karą wygładzającą, reguła siatki ustalona z góry | Odpowiada na zagrożenie „człony fizyczne jako ogólna regularyzacja” (§11); zarejestrowane przed jakimkolwiek wynikiem strojenia V1–V3 i przed wynikami testowymi | Eksploracyjne; uruchamiane tylko, jeśli H1 jest poparta |
+| 2026-11-12 | Doprecyzowanie bootstrapu i reguł przedziałów w §10: indeksy wspólne dla seedów, wariantów i zbiorów (wcześniej „w obrębie każdego seeda”); przedział percentylowy, 10 000 replikacji; reguła szerszego przedziału dotyczy kryterium 2 dla H1 oraz H3; testy drugorzędne to testy t dla jednej próby z poprawką Holma przy α = 0.05 | Implementacja §10 w `src/evaluation/stats.py`; losowanie osobno w każdym seedzie traktowałoby jeden wspólny zbiór testowy jak pięć i zaniżało zmienność zbioru testowego | Ustala procedurę statystyczną przed jakimkolwiek wynikiem testowym; implementacja sprawdzona na danych syntetycznych o znanym efekcie |
 
 ## 14. Reprodukowalność
 
