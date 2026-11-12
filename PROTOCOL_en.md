@@ -238,6 +238,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-11 | Refactored `SpectralConv2d` (weights reshaped to `[m1·m2, in, out]`; `modes`, `width`, `pad_ratio` unchanged) | Fewer memory copies and execution speedup via `torch.bmm` | None; identical mathematical function, forward and gradient equivalence verified by test |
 | 2026-11-11 | Runtime estimate correction in §15 item 1 | Profiling and smoke tests measured ~0.32 s/step (~72 min/run instead of <8 min; ~116 h total on GTX 1660) | None; concerns computational schedule only, not hypotheses, decision rules, or metrics |
 | 2026-11-12 | Fixed pipe characters in §8 (M1 row) | Added backslashes before vertical bars (`\|r_ell − θ_E\|`) to prevent Markdown table splitting | None; formatting fix only |
+| 2026-11-12 | Clarified training vs. evaluation time breakdown in §15 item 1 | Separated pure training step time (~0.32 s/step) from validation evaluations (25 × ~12 s), which sum to ~72 min/run | None; wording precision in compute budget only |
 
 ## 14. Reproducibility
 
@@ -249,7 +250,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 
 ## 15. Decisions Prior to Freezing (Resolved)
 
-1. **Seed count and compute feasibility:** Confirmed 5 seeds (42–46) and 60 training runs in E-main. On an NVIDIA GTX 1660, a single training run takes ~72 minutes (~0.32 s/step including evaluations every 500 steps), requiring ~72 hours total for E-main (~116 hours including the 36-run tuning phase). 5 seeds provide 4 degrees of freedom in the t-distribution ($t_{0.05} = 2.776$), ensuring statistical power.
+1. **Seed count and compute feasibility:** Confirmed 5 seeds (42–46) and 60 training runs in E-main. On an NVIDIA GTX 1660, a single FNO training run of 12,500 steps takes ~72 minutes (12,500 steps at ~0.32 s/step plus 25 evaluations at ~12 s each), requiring ~72 hours total for E-main (~116 hours including the 36-run tuning phase). Originally estimated at 7–8 hours total. 5 seeds provide 4 degrees of freedom in the t-distribution ($t_{0.05} = 2.776$), ensuring statistical power.
 2. **Significance thresholds:** The 5% improvement threshold (`ln ≤ -0.051`) and 5% non-inferiority bound (`ln ≤ +0.049`) in §10 are frozen.
 3. **Axis A1 aggregation:** Axis A1 enters composite endpoint E1 as a single aggregated axis (unweighted mean of its four constituent parameter sweeps).
 4. **Negative mass axis (κ < 0):** Added strictly as a standalone diagnostic control outside E1 to assess model behavior under violated prior assumptions.
