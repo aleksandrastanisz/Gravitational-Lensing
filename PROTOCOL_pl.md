@@ -124,7 +124,7 @@ Szczegóły generatora (`src/data/generator.py`):
 
 - **Architektura (główna):** FNOLensingReconstructor (modes = 32, width = 64, pad_ratio = 0.25). Nie zmieniamy jej między wariantami.
 - **Wejście i wyjście:** sieć widzi tylko `observed` (plus dwa kanały współrzędnych), bez `noise_map`. Wyjście ψ jest centrowane (odejmowana średnia po siatce); wyjście źródła przechodzi przez Softplus, więc jest nieujemne.
-- **Architektura (kontrolna, S2):** U-Net/CNN o zbliżonej liczbie parametrów, tylko V0 i V3 przy N = 2 000. Sprawdza, czy wnioski nie dotyczą wyłącznie FNO.
+- **Architektura (kontrolna, S2):** U-Net/CNN o zbliżonej liczbie parametrów, tylko V0 i V3 przy N = 2 000. Sprawdza, czy wnioski nie dotyczą wyłącznie FNO. Parametry liczymy jako liczby rzeczywiste (waga zespolona liczy się podwójnie); FNO ma ich około 67,3 mln, prawie w całości w warstwach spektralnych, a U-Net musi się z tym zgadzać z dokładnością ±10%. lr strojone jest dla U-Net V0 na siatce z §7.1 (3 przebiegi, wd z `tuned.yaml`, N = 2 000, seed 100, kryterium `val_select`); U-Net V3 je dziedziczy, a wd i λ pochodzą z `tuned.yaml`.
 - **Budżet:** stała liczba kroków optymalizatora dla wszystkich N (12 500 kroków, batch 16; dla N = 8 000 odpowiada to ok. 25 epokom). Mniejsze N oznaczają więcej epok.
 - **Optymalizator:** AdamW + OneCycleLR z domyślnymi ustawieniami PyTorch (pct_start = 0.3, wygaszanie cosinusowe, div_factor = 25, final_div_factor = 10⁴) i max_lr = lr (strojone w §7.1); norma gradientu przycinana do 1.0.
 - **Rozgrzewka członów fizycznych:** `warm(step) = clip((step − 1500) / 1500, 0, 1)`, co odpowiada 0 przez pierwsze 1 500 kroków (3 epoki przy bazowym N = 8 000, batch 16) i liniowemu wzrostowi do 1.0 w krokach 1 500–3 000 dla wszystkich N.
@@ -180,16 +180,20 @@ Wszystkie liczone **per próbka** (nie jako średnie z batchy), na siatce 128×1
 | ID | Opis | Rola |
 |---|---|---|
 | E-main | V0-V3 × N ∈ {500, 2 000, 8 000} × 5 seedów × wszystkie osie OOD | konfirmacyjny (H1, H2, H3) |
-| S1 | V2 i V3 z obcięciem χ² (`chi2_mode = clamp`, max 100) zamiast pseudo-Hubera, N = 2 000 | czułość na sposób obcięcia χ² |
-| S2 | U-Net/CNN, V0 vs V3, N = 2 000 | czułość na architekturę |
-| S3 | σ oracle zamiast σ szacowanej w `L_ray` (V2, V3) | czułość na szum |
+| S1 | V2 i V3 z obcięciem χ² (`chi2_mode = clamp`, max 100) zamiast pseudo-Hubera, N = 2 000, seedy 42–46, konfiguracje z `tuned.yaml` | czułość na sposób obcięcia χ² |
+| S2 | U-Net/CNN (§7), V0 vs V3, N = 2 000, seedy 42–46 | czułość na architekturę |
+| S3 | σ oracle zamiast σ szacowanej w `L_ray` (V2, V3), N = 2 000, seedy 42–46, konfiguracje z `tuned.yaml` | czułość na szum |
 | S4 | obserwacje z `A_model` (wariant z *inverse crime*), V0 vs V3, N = 2 000; wszystkie podziały (train, val, test ID, OOD) generowane od nowa przez `A_model` na seedach z E-main, konfiguracje z `tuned.yaml` bez osobnego strojenia, seedy 42–46, dane w `data_s4/`, treningi z tagiem S4 | ile wyników zależy od zgodności operatorów |
 | X1 | V4 (bez etykiet), N = 2 000; λ_ray i λ_pos z dostrojonego V3; checkpoint wybierany przez `val_select`, jak dla wszystkich wariantów (korzysta to z 1 000 oznaczonych próbek walidacyjnych i jest jawnie podane w raporcie) | eksploracyjny |
-| X2 | rozszerzenie półnadzorowane: `L_ray` i `L_pos` na wszystkich 8 000 obserwacjach, `L_sup` na pierwszych N | eksploracyjny (miesza więzy z dodatkowymi danymi) |
+| X2 | rozszerzenie półnadzorowane: `L_ray` i `L_pos` na wszystkich 8 000 obserwacjach, `L_sup` na pierwszych N; V3, N = 2 000, seedy 42–46, konfiguracja z `tuned.yaml` | eksploracyjny (miesza więzy z dodatkowymi danymi) |
 | X3 | jedno powtórzenie wybranych konfiguracji strojenia V0 i V3 (N = 2 000, seed 100) | skala szumu między przebiegami wynikającego z niedeterminizmu GPU; wyłącznie opisowo, nie zmienia wyboru ze strojenia |
 | X4 | wariant R = `L_sup + λ_R·L_R`, `L_R = mean((∇²ψ)²)` we wnętrzu siatki (niefizyczna kara za krzywiznę ψ niezależnie od znaku); λ_R z 3 wartości strojonych przy N = 2 000, seed 100, potem 5 seedów (42–46); porównanie z V3 na osiach OOD jak w §10 | eksploracyjny; uruchamiany **tylko jeśli H1 jest poparta**; sprawdza, czy zysk V3 odzwierciedla ogólną regularyzację. Siatka ustalona z góry: λ_R takie, że λ_R·L_R na prawdziwym ψ zbioru treningowego równa się 1%, 10% i 100% końcowego treningowego `L_sup` wybranego przebiegu strojenia V0 |
 
 Liczba treningów w E-main: 4 × 3 × 5 = 60 (+ strojenie 36 + kontrole).
+
+**Analiza S1–S4 i X1–X3** jest opisowa, bez testów hipotez: dla każdego przebiegu kontrolnego efekt `d` i `E1` względem jego odpowiednika z E-main (ten sam wariant, N i seed; dla S2 i S4 V3 względem V0 w tej samej architekturze lub na tych samych danych), ze średnią po seedach i 95% przedziałem t. Kontrole bez ponownego strojenia używają `tuned.yaml`, więc mierzą czułość przy ustalonych hiperparametrach.
+
+**Kolejność przebiegów** (najpierw najważniejsze dla interpretacji): E-main, X3, S4, S2, S1, S3, X1, X2, X4 (tylko jeśli H1 jest poparta). Około 63 przebiegów kontrolnych (~75 h na GTX 1660) ponad E-main.
 
 ## 10. Statystyka i reguły decyzyjne
 
@@ -278,6 +282,7 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | 2026-11-12 | Dodanie X4 do §9: warunkowa kontrola z niefizyczną karą wygładzającą, reguła siatki ustalona z góry | Odpowiada na zagrożenie „człony fizyczne jako ogólna regularyzacja” (§11); zarejestrowane przed jakimkolwiek wynikiem strojenia V1–V3 i przed wynikami testowymi | Eksploracyjne; uruchamiane tylko, jeśli H1 jest poparta |
 | 2026-11-12 | Doprecyzowanie bootstrapu i reguł przedziałów w §10: indeksy wspólne dla seedów, wariantów i zbiorów (wcześniej „w obrębie każdego seeda”); przedział percentylowy, 10 000 replikacji; reguła szerszego przedziału dotyczy kryterium 2 dla H1 oraz H3; testy drugorzędne to testy t dla jednej próby z poprawką Holma przy α = 0.05 | Implementacja §10 w `src/evaluation/stats.py`; losowanie osobno w każdym seedzie traktowałoby jeden wspólny zbiór testowy jak pięć i zaniżało zmienność zbioru testowego | Ustala procedurę statystyczną przed jakimkolwiek wynikiem testowym; implementacja sprawdzona na danych syntetycznych o znanym efekcie |
 | 2026-11-13 | H2 w §10 rozszerzona do trzech kryteriów na wzór H1: średnie nachylenie ≥ ln(1/0.95)/ln 16 ≈ 0.0185, przedział t bez 0, dodatnie nachylenie w ≥ 4 z 5 seedów; aktualizacja §15 pkt 2 | H2 nie miała progu praktycznego: test na danych syntetycznych pokazał, że nachylenie odpowiadające ~1% zmiany efektu w zakresie N = 500–8 000 mogło zostać uznane za poparte przy małym rozrzucie między seedami | Ostrzejsza reguła decyzyjna dla H2; ustalona przed jakimkolwiek wynikiem testowym i przed strojeniem V3 |
+| 2026-11-13 | Doprecyzowanie S1, S2, S3 i X2 w §9 (N = 2 000, seedy 42–46, konfiguracje z `tuned.yaml`); S2 w §7: parametry liczone jako liczby rzeczywiste (FNO ≈ 67,3 mln, U-Net w granicach ±10%), lr strojone dla U-Net V0 na 3 wartościach i dziedziczone przez V3; dodana opisowa analiza kontroli i kolejność przebiegów | Protokół nie podawał seedów, N (S3), hiperparametrów ani sposobu analizy eksperymentów kontrolnych; liczba parametrów FNO z wagami zespolonymi była niejednoznaczna | Ustala eksperymenty kontrolne przed jakimkolwiek wynikiem testowym; bez zmian w H1–H3 |
 
 ## 14. Reprodukowalność
 

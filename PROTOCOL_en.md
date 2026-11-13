@@ -124,7 +124,7 @@ Generator details (`src/data/generator.py`):
 
 - **Architecture (main):** FNOLensingReconstructor (modes = 32, width = 64, pad_ratio = 0.25). We do not change it between variants.
 - **Input and output:** the network sees only `observed` (plus two coordinate channels), not `noise_map`. The ψ output is centred (grid mean subtracted); the source output passes through Softplus, so it is non-negative.
-- **Architecture (control, S2):** U-Net/CNN with a comparable number of parameters, V0 and V3 only, at N = 2 000. Checks whether the conclusions are specific to FNO.
+- **Architecture (control, S2):** U-Net/CNN with a comparable number of parameters, V0 and V3 only, at N = 2 000. Checks whether the conclusions are specific to FNO. Parameters are counted as real numbers (a complex weight counts twice); the FNO has about 67.3 M, almost all in the spectral layers, and the U-Net must match this within ±10%. lr is tuned for U-Net V0 on the grid of §7.1 (3 runs, wd from `tuned.yaml`, N = 2 000, seed 100, criterion `val_select`); U-Net V3 inherits it, and wd and λ come from `tuned.yaml`.
 - **Budget:** fixed number of optimizer steps for all N (12 500 steps, batch 16; for N = 8 000 this corresponds to about 25 epochs). Smaller N means more epochs.
 - **Optimizer:** AdamW + OneCycleLR with PyTorch defaults (pct_start = 0.3, cosine annealing, div_factor = 25, final_div_factor = 10⁴) and max_lr = lr (tuned in §7.1); gradient norm clipped to 1.0.
 - **Warm-up of physical terms:** `warm(step) = clip((step − 1500) / 1500, 0, 1)`, corresponding to 0 for the first 1,500 steps (3 epochs at base N = 8,000, batch 16) and a linear ramp to 1.0 over steps 1,500–3,000 across all N.
@@ -180,16 +180,20 @@ All computed **per sample** (not as averages of batch means), on the 128×128 gr
 | ID | Description | Role |
 |---|---|---|
 | E-main | V0-V3 × N ∈ {500, 2 000, 8 000} × 5 seeds × all OOD axes | confirmatory (H1, H2, H3) |
-| S1 | V2 and V3 with clamped χ² (`chi2_mode = clamp`, max 100) instead of pseudo-Huber, N = 2 000 | sensitivity to the χ² clipping method |
-| S2 | U-Net/CNN, V0 vs V3, N = 2 000 | sensitivity to architecture |
-| S3 | oracle σ instead of estimated σ in `L_ray` (V2, V3) | sensitivity to noise |
+| S1 | V2 and V3 with clamped χ² (`chi2_mode = clamp`, max 100) instead of pseudo-Huber, N = 2 000, seeds 42–46, configurations from `tuned.yaml` | sensitivity to the χ² clipping method |
+| S2 | U-Net/CNN (§7), V0 vs V3, N = 2 000, seeds 42–46 | sensitivity to architecture |
+| S3 | oracle σ instead of estimated σ in `L_ray` (V2, V3), N = 2 000, seeds 42–46, configurations from `tuned.yaml` | sensitivity to noise |
 | S4 | observations from `A_model` (the *inverse crime* variant), V0 vs V3, N = 2 000; all splits (train, val, test ID, OOD) regenerated with `A_model` on the E-main seeds, configurations from `tuned.yaml` without separate tuning, seeds 42–46, data in `data_s4/`, runs tagged S4 | how much of the result depends on operator agreement |
 | X1 | V4 (no labels), N = 2 000; λ_ray and λ_pos from the tuned V3; checkpoint selected by `val_select`, as for all variants (this uses the 1 000 labelled validation samples and is stated in the report) | exploratory |
-| X2 | semi-supervised extension: `L_ray` and `L_pos` on all 8 000 observations, `L_sup` on the first N | exploratory (mixes constraints with additional data) |
+| X2 | semi-supervised extension: `L_ray` and `L_pos` on all 8 000 observations, `L_sup` on the first N; V3, N = 2 000, seeds 42–46, configuration from `tuned.yaml` | exploratory (mixes constraints with additional data) |
 | X3 | one repeat of the selected V0 and V3 tuning configurations (N = 2 000, seed 100) | scale of run-to-run noise from GPU non-determinism; descriptive only, does not change the tuning choice |
 | X4 | variant R = `L_sup + λ_R·L_R`, `L_R = mean((∇²ψ)²)` on the grid interior (non-physical smoothness penalty on the curvature of ψ regardless of sign); λ_R from 3 values tuned at N = 2 000, seed 100, then 5 seeds (42–46); compared with V3 on the OOD axes as in §10 | exploratory; run **only if H1 is supported**; tests whether a gain of V3 reflects generic regularization. Grid fixed in advance: λ_R such that λ_R·L_R on the true ψ of the training set equals 1%, 10% and 100% of the final training `L_sup` of the selected V0 tuning run |
 
 Number of trainings in E-main: 4 × 3 × 5 = 60 (+ 36 for tuning + controls).
+
+**Analysis of S1–S4 and X1–X3** is descriptive, without hypothesis tests: for each control run, the effect `d` and `E1` relative to its E-main counterpart (same variant, N and seed; for S2 and S4, V3 vs V0 within the same architecture or data), with the mean over seeds and the 95% t interval. Controls without retuning use `tuned.yaml`, so they measure sensitivity at fixed hyperparameters.
+
+**Order of runs** (most important for interpretation first): E-main, X3, S4, S2, S1, S3, X1, X2, X4 (only if H1 is supported). About 63 control runs (~75 h on a GTX 1660) in addition to E-main.
 
 ## 10. Statistics and decision rules
 
@@ -278,6 +282,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-12 | X4 added to §9: conditional control with a non-physical smoothness penalty, grid rule fixed in advance | Addresses the threat "physics terms as generic regularizers" (§11); registered before any tuning result of V1–V3 or any test result | Exploratory; runs only if H1 is supported |
 | 2026-11-12 | Bootstrap and interval rules specified in §10: indices shared across seeds, variants and sets (previously "within each seed"); percentile interval, 10 000 replicates; wider-of rule applies to H1 criterion 2 and H3; secondary tests are one-sample t tests with Holm at α = 0.05 | Implementation of §10 in `src/evaluation/stats.py`; resampling independently per seed would treat one common test set as five and understate test-set variability | Fixes the statistical procedure before any test result; implementation verified on synthetic data with known effects |
 | 2026-11-13 | H2 in §10 extended to three criteria mirroring H1: mean slope ≥ ln(1/0.95)/ln 16 ≈ 0.0185, t interval excluding 0, positive slope in ≥ 4 of 5 seeds; §15 item 2 updated | H2 had no practical threshold: a test on synthetic data showed that a slope corresponding to a ~1% change in the effect over N = 500–8 000 could be declared supported when seed-to-seed spread is small | Stricter decision rule for H2; fixed before any test-set result and before tuning of V3 |
+| 2026-11-13 | S1, S2, S3 and X2 specified in §9 (N = 2 000, seeds 42–46, configurations from `tuned.yaml`); S2 in §7: parameters counted as real numbers (FNO ≈ 67.3 M, U-Net within ±10%), lr tuned for U-Net V0 on 3 values and inherited by V3; descriptive analysis of controls and order of runs added | The protocol did not state seeds, N (S3), hyperparameters or the analysis of the control experiments; the parameter count of the FNO with complex weights was ambiguous | Fixes the control experiments before any test result; no change to H1–H3 |
 
 ## 14. Reproducibility
 
