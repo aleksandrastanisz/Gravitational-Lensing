@@ -59,6 +59,15 @@ def test_h2_detects_effect_growing_as_n_falls():
     assert r["mean"] > 0 and r["supported"]
 
 
+def test_h2_threshold_rejects_small_but_consistent_slope():
+    f = {500: 0.99, 2_000: 0.995, 8_000: 1.0}
+    M_by_N = {n: _fake(lambda a, n=n: f[n], jitter=0.0005, rng_seed=n) for n in S.NS}
+    r = S.decide_h2(M_by_N, SEEDS)
+    assert r["criteria"]["ci_excludes_zero"] and not r["criteria"]["mean_ge_threshold"]
+    assert not r["supported"]
+    assert abs(S.H2_THRESHOLD - 0.0185) < 1e-4
+
+
 def test_h3_non_inferiority_margin():
     ok = S.decide_h3({"m1": _fake(lambda a: 1.02, jitter=0.005)}, SEEDS, B=500)
     bad = S.decide_h3({"m1": _fake(lambda a: 1.10, jitter=0.005)}, SEEDS, B=500)

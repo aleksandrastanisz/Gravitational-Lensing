@@ -15,6 +15,7 @@ NS = (500, 2_000, 8_000)
 REF_N = 2_000
 H1_THRESHOLD = math.log(0.95)
 H3_MARGIN = math.log(1.05)
+H2_THRESHOLD = math.log(1 / 0.95) / math.log(NS[-1] / NS[0])   # ~0.0185 per unit of ln N
 B_DEFAULT = 10_000
 
 # Moderate level of every E1 axis; A1 is the mean of its four sub-axes (§15 item 3).
@@ -124,13 +125,16 @@ def decide_h1(M, seeds, B=B_DEFAULT):
 
 
 def decide_h2(M_by_N, seeds):
-    """H2: per-seed slope of E1 on log N, mean slope with t interval; positive slope = effect grows as N falls."""
+    """H2: per-seed slope of E1 on log N; three criteria of §10. Positive slope = effect grows as N falls."""
     x = np.log(np.array(NS, dtype=float))
     E = np.stack([e1(M_by_N[n], "V3", seeds) for n in NS], 1)               # [S, 3]
     slopes = np.array([np.polyfit(x, E[i], 1)[0] for i in range(len(seeds))])
     m, lo, hi = t_interval(slopes)
+    crit = dict(mean_ge_threshold=bool(m >= H2_THRESHOLD),
+                ci_excludes_zero=bool(lo > 0 or hi < 0),
+                positive_in_4_of_5=bool((slopes > 0).sum() >= 4))
     return dict(E1_by_N={n: E[:, j].tolist() for j, n in enumerate(NS)}, slopes=slopes.tolist(),
-                mean=m, interval=[lo, hi], supported=bool(lo > 0))
+                mean=m, interval=[lo, hi], criteria=crit, supported=all(crit.values()))
 
 
 def decide_h3(M_by_metric, seeds, B=B_DEFAULT):

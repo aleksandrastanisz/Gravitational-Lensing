@@ -214,7 +214,10 @@ For N = 2 000 (reference size). H1 is considered supported when all of the follo
 2. the 95% confidence interval for the mean (t distribution, 4 degrees of freedom) does not contain 0,
 3. `E1[s] < 0` in at least 4 of 5 seeds.
 
-**H2.** Slope of `E1` with respect to `log N`, fitted separately in each seed (3 points per seed); the mean slope over seeds with a 95% t interval (4 degrees of freedom). Supported when the interval does not contain 0 and the sign agrees with the hypothesis.
+**H2.** Slope of `E1` with respect to `log N`, fitted separately in each seed (3 points per seed); the mean slope over seeds with a 95% t interval (4 degrees of freedom). A positive slope means that the benefit of V3 grows as N decreases. H2 is considered supported when all of the following hold:
+1. the mean slope is `≥ ln(1/0.95) / ln 16 ≈ 0.0185` (the effect at N = 500 is at least 5% stronger than at N = 8 000, the same practical threshold as in H1);
+2. the 95% t interval does not contain 0;
+3. the slope is positive in at least 4 of 5 seeds.
 
 **H3.** Difference on ID `d[s,ID]` for M1 and M2: non-inferiority holds when the upper 95% CI bound is `≤ log(1.05)`. Decided at N = 2 000.
 
@@ -274,6 +277,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-12 | X3 added to §9: one repeat of the selected V0 and V3 tuning configurations | GPU non-determinism produced differences of ~0.01–0.015 in `val_select` between tuning runs mid-training | Descriptive; tuning choice unchanged |
 | 2026-11-12 | X4 added to §9: conditional control with a non-physical smoothness penalty, grid rule fixed in advance | Addresses the threat "physics terms as generic regularizers" (§11); registered before any tuning result of V1–V3 or any test result | Exploratory; runs only if H1 is supported |
 | 2026-11-12 | Bootstrap and interval rules specified in §10: indices shared across seeds, variants and sets (previously "within each seed"); percentile interval, 10 000 replicates; wider-of rule applies to H1 criterion 2 and H3; secondary tests are one-sample t tests with Holm at α = 0.05 | Implementation of §10 in `src/evaluation/stats.py`; resampling independently per seed would treat one common test set as five and understate test-set variability | Fixes the statistical procedure before any test result; implementation verified on synthetic data with known effects |
+| 2026-11-13 | H2 in §10 extended to three criteria mirroring H1: mean slope ≥ ln(1/0.95)/ln 16 ≈ 0.0185, t interval excluding 0, positive slope in ≥ 4 of 5 seeds; §15 item 2 updated | H2 had no practical threshold: a test on synthetic data showed that a slope corresponding to a ~1% change in the effect over N = 500–8 000 could be declared supported when seed-to-seed spread is small | Stricter decision rule for H2; fixed before any test-set result and before tuning of V3 |
 
 ## 14. Reproducibility
 
@@ -288,7 +292,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 ## 15. Decisions Prior to Freezing (Resolved)
 
 1. **Seed count and compute feasibility:** Confirmed 5 seeds (42–46) and 60 training runs in E-main. On an NVIDIA GTX 1660, a single FNO training run of 12,500 steps takes ~72 minutes (12,500 steps at ~0.32 s/step plus 25 evaluations at ~12 s each), requiring ~72 hours total for E-main (~116 hours including the 36-run tuning phase). Originally estimated at 7–8 hours total. 5 seeds provide 4 degrees of freedom in the t-distribution ($t_{0.05} = 2.776$), ensuring statistical power.
-2. **Significance thresholds:** The 5% improvement threshold (`ln ≤ -0.051`) and 5% non-inferiority bound (`ln ≤ +0.049`) in §10 are frozen.
+2. **Significance thresholds:** The 5% improvement threshold (`ln ≤ -0.051`) and 5% non-inferiority bound (`ln ≤ +0.049`) in §10 are frozen. The same 5% threshold, expressed as a slope of `E1` per unit of `ln N` (`≥ 0.0185`), applies to H2 (added 2026-11-13, see §13).
 3. **Axis A1 aggregation:** Axis A1 enters composite endpoint E1 as a single aggregated axis (arithmetic mean of the log-ratios d of its four sub-axes: θ_E, q, shear and source position).
 4. **Negative mass axis (κ < 0):** Added strictly as a standalone diagnostic control outside E1 to assess model behavior under violated prior assumptions. Implemented as an exact mirror of A3 (same draw stream, a = 0.1″, sign of b reversed), kept outside E1 and outside `N_LEVELS` (separate `DIAG_LEVELS`). At L1 roughly half of the samples violate κ ≥ 0; this borderline level is accepted.
 5. **Detector gain:** Frozen at `gain = 500.0`, maintaining a realistic Poisson shot-noise regime in high-magnification arcs.
