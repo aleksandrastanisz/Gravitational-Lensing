@@ -12,7 +12,8 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import OneCycleLR
 
 from src.data.store import NpyDataset
-from src.losses.lensing_loss import LensingLoss, loss_config, sup_per_sample
+from src.losses.lensing_loss import LensingLoss, loss_config
+from src.physics.deflection import alpha_rel_l2, rel_l2
 from src.models.fno_reconstructor import FNOLensingReconstructor
 from src.utils.config import SimulationConfig
 
@@ -69,15 +70,20 @@ def batches(ds, batch, seed, keys=None):
 
 @torch.inference_mode()
 def val_select(model, arrays, d, device, batch=50):
+    """Selection criterion (§7) and its two components, all means over the validation set.
+
+    The total is computed per sample exactly as sup_per_sample: relL2(source) + 2 relL2(alpha).
+    """
     model.eval()
     n = len(next(iter(arrays.values())))
-    vals = []
+    tot, srcs, alphas = [], [], []
     for i in range(0, n, batch):
         b = to_dev({k: v[i:i + batch] for k, v in arrays.items()}, device)
         psi, src = model(b["observed"])
-        vals.append(sup_per_sample(psi, src, b["psi"], b["source"], d))
+        s, a = rel_l2(src, b["source"]), alpha_rel_l2(psi, b["psi"], d)
+        tot.append(s + 2.0 * a); srcs.append(s); alphas.append(a)
     model.train()
-    return torch.cat(vals).mean().item()
+    return torch.cat(tot).mean().item(), torch.cat(srcs).mean().item(), torch.cat(alphas).mean().item()
 
 
 def _git_state():
@@ -88,6 +94,17 @@ def _git_state():
         return h, dirty
     except Exception:
         return None, None
+
+
+_PROCESS_GIT = None
+
+
+def process_git_state():
+    """Git state read once, when the first run of this process starts (the code it executes)."""
+    global _PROCESS_GIT
+    if _PROCESS_GIT is None:
+        _PROCESS_GIT = _git_state()
+    return _PROCESS_GIT
 
 
 def run_name(c: TrainConfig) -> str:
@@ -103,7 +120,7 @@ def run(c: TrainConfig, device=None):
         return meta
     out.mkdir(parents=True, exist_ok=True)
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    commit, dirty = _git_state()
+    commit, dirty = process_git_state()
     gpu = torch.cuda.get_device_name(device) if device.type == "cuda" else None
     cfg = SimulationConfig.from_yaml()
 
@@ -141,12 +158,12 @@ def run(c: TrainConfig, device=None):
             if device.type == "cuda":
                 torch.cuda.synchronize()
             t_eval = time.perf_counter()
-            vs = val_select(model, val_arrays, d, device)
+            vs, v_src, v_alpha = val_select(model, val_arrays, d, device)
             eval_sec += time.perf_counter() - t_eval
             if not math.isfinite(vs):
                 raise RuntimeError(f"{run_name(c)}: val_select={vs} at step {step + 1}")
             sec = time.perf_counter() - t0
-            rec = dict(step=step + 1, ref_epoch=(step + 1) / REF_STEPS_PER_EPOCH, val_select=vs,
+            rec = dict(step=step + 1, ref_epoch=(step + 1) / REF_STEPS_PER_EPOCH, val_select=vs, val_src=v_src, val_alpha=v_alpha,
                        sec=sec, sec_eval=eval_sec, lr=sched.get_last_lr()[0],
                        **{f"train_{k}": float(v) / n_acc for k, v in acc.items()})
             hist.append(rec)
