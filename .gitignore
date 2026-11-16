@@ -7,3 +7,4 @@ __pycache__/
 runs/
 results/figures/
 results/x5/val.*
+data_s4/

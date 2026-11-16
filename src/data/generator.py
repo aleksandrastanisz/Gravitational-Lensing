@@ -133,11 +133,12 @@ def _src_center(p, clumps):
             float(np.sum(w * [c[2] for c in clumps]) / w.sum()))
 
 
-def generate(seed, cfg, shift=None):
+def generate(seed, cfg, shift=None, operator=a_truth):
+    """One sample. `operator` renders the clean image; a_truth everywhere except control S4."""
     p, u, z = draw_base(seed, cfg)
     p, slope, sub, clumps, psf = apply_shift(p, u, cfg, shift, seed)
     psi_fn, src_fn = make_fns(p, cfg, slope, sub, clumps)
-    clean, psi, src = a_truth(psi_fn, src_fn, cfg.extent, cfg.grid_size, psf)
+    clean, psi, src = operator(psi_fn, src_fn, cfg.extent, cfg.grid_size, psf)
     sigma = true_sigma(clean[None], p["sigma0"], cfg.gain)[0]
     cx, cy = _src_center(p, clumps)
     vals = {**p, "cx_src": cx, "cy_src": cy, "slope": slope}
