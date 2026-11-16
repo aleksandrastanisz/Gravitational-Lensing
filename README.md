@@ -100,7 +100,16 @@ python -m scripts.make_datasets_diag  # writes data/diag/ (negative-mass control
 python -m pytest tests -q
 python -m scripts.tune                # 36 runs, writes configs/tuned.yaml
 python -m scripts.run_emain           # 60 runs of the main experiment
+
+python -m scripts.evaluate_all --final  # per-sample metrics on test ID, OOD and diagnostic sets
+python -m scripts.make_tables           # hypotheses H1-H3, tables and dose-response figures
+python -m scripts.make_figures --final --set test_id  # validation curves and example reconstructions
+python -m scripts.run_x5 --final        # parametric reference fit (exploratory)
+python -m scripts.make_datasets_s4      # writes data_s4/ for control S4 (observations from A_model)
+python -m scripts.run_s4                # 10 runs of control S4
 ```
+
+Test, OOD and diagnostic sets are read only with `--final`; the first such evaluation writes `results/metrics/FINAL_EVALUATION.json`, and the figure and fitting scripts refuse to read those sets before that file exists.
 
 One training run takes about 72 minutes on a GTX 1660: about 43 h for tuning and 72 h for the main experiment.
 
