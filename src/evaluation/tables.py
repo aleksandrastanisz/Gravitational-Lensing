@@ -166,6 +166,58 @@ def figures(rows, out_dir):
     return "figures written"
 
 
+def hypothesis_figures(hyp, out_dir):
+    """E1 per seed with both intervals (H1) and E1 against N with the per-seed slopes (H2)."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return []
+    out, written = Path(out_dir), []
+    h1 = hyp.get("H1", {})
+    if "E1" in h1:
+        fig, ax = plt.subplots(figsize=(4.6, 3.2))
+        ax.scatter(SEEDS, h1["E1"], color="k", zorder=3, label="seed")
+        x0, x1 = SEEDS[-1] + 0.8, SEEDS[-1] + 1.6
+        for x, key, name in ((x0, "t_interval", "t over seeds"), (x1, "bootstrap_interval", "bootstrap over samples")):
+            lo, hi = h1[key]
+            ax.errorbar([x], [h1["mean"]], yerr=[[h1["mean"] - lo], [hi - h1["mean"]]], marker="o", capsize=4, label=name)
+        ax.axhline(0.0, color="0.5", lw=0.8)
+        ax.axhline(S.H1_THRESHOLD, color="0.5", lw=0.8, ls="--", label="ln 0.95")
+        ax.set_xticks(list(SEEDS) + [x0, x1], [str(s) for s in SEEDS] + ["mean", "mean"])
+        ax.set_xlabel("training seed")
+        ax.set_ylabel("E1 = mean ln(M1[V3] / M1[V0])")
+        ax.set_title(f"N = {S.REF_N}")
+        ax.legend(frameon=False, fontsize=7)
+        fig.tight_layout()
+        fig.savefig(out / "h1_e1_per_seed.png", dpi=200)
+        plt.close(fig)
+        written.append("h1_e1_per_seed.png")
+    h2 = hyp.get("H2", {})
+    if "E1_by_N" in h2:
+        E = np.array([h2["E1_by_N"][n] if n in h2["E1_by_N"] else h2["E1_by_N"][str(n)] for n in S.NS]).T
+        x = np.log(np.array(S.NS, dtype=float))
+        fig, ax = plt.subplots(figsize=(4.6, 3.2))
+        for i, s in enumerate(SEEDS):
+            ax.plot(S.NS, E[i], marker="o", lw=0.8, alpha=0.6, label=f"seed {s}")
+        b = float(h2["mean"])
+        a = float(E.mean() - b * x.mean())
+        ax.plot(S.NS, a + b * x, color="k", lw=1.8, label=f"mean slope {b:+.4f}")
+        ax.axhline(0.0, color="0.5", lw=0.8)
+        ax.set_xscale("log")
+        ax.set_xticks(list(S.NS), [str(n) for n in S.NS])
+        ax.minorticks_off()
+        ax.set_xlabel("training-set size N")
+        ax.set_ylabel("E1")
+        ax.legend(frameon=False, fontsize=7)
+        fig.tight_layout()
+        fig.savefig(out / "h2_e1_vs_n.png", dpi=200)
+        plt.close(fig)
+        written.append("h2_e1_vs_n.png")
+    return written
+
+
 def build(metrics_root="results/metrics", out_dir="results/tables", tuning="results/tuning.json", B=S.B_DEFAULT):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -173,6 +225,7 @@ def build(metrics_root="results/metrics", out_dir="results/tables", tuning="resu
 
     hyp = hypotheses(metrics_root, B)
     (out / "stats.json").write_text(json.dumps(hyp, indent=1, default=float))
+    hypothesis_figures(hyp, out)
     md += ["## Hypotheses (§10)", ""]
     for h in ("H1", "H2", "H3"):
         r = hyp[h]

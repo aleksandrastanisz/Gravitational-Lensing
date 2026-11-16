@@ -38,6 +38,8 @@ def test_build_writes_tables_and_decides_h1(tmp_path):
     rep = (tmp_path / "tables" / "report.md").read_text(encoding="utf-8")
     assert "## M1, N = 2000" in rep and "Kneg" in rep and "—" not in rep.split("## Generalization")[0]
     assert (tmp_path / "tables" / "dose_response.csv").exists()
+    assert (tmp_path / "tables" / "h1_e1_per_seed.png").exists()
+    assert (tmp_path / "tables" / "h2_e1_vs_n.png").exists()
 
 
 def test_missing_runs_are_reported_not_crashing(tmp_path):
@@ -46,3 +48,33 @@ def test_missing_runs_are_reported_not_crashing(tmp_path):
     build(tmp_path / "metrics", tmp_path / "tables", tmp_path / "missing.json", B=200)
     st = json.loads((tmp_path / "tables" / "stats.json").read_text())
     assert "missing" in st["H1"] and "missing" not in st["H3"]
+
+
+def test_controls_compare_with_emain_counterparts(tmp_path):
+    from src.evaluation.controls import build as build_controls
+
+    root = tmp_path / "metrics"
+    _fake_results(root, factor_v3=0.9)
+    rng = np.random.default_rng(1)
+    for s in SEEDS:                                   # control S4: V0 unchanged, V3 a further 20% lower
+        for v, f in (("V0", 1.0), ("V3", 0.8)):
+            for a in SETS:
+                src = np.load(set_file(root, run_name(v, 2_000, s), a))
+                p = set_file(root, run_name(v, 2_000, s, "S4"), a)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                np.savez(p, **{k: src[k] * f for k in src.files})
+    for a in SETS:                                    # control S1: only one seed present
+        p = set_file(root, run_name("V3", 2_000, 42, "S1"), a)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(p, m1=rng.random(200))
+    res = build_controls(root, tmp_path / "tables", tags=("S4", "S1", "S3"))
+    s4 = res["S4"]
+    assert abs(s4["vs_emain"]["V0"]["e1_axes"]["mean"]) < 1e-12
+    assert abs(s4["vs_emain"]["V3"]["e1_axes"]["mean"] - math.log(0.8)) < 1e-9
+    assert abs(s4["vs_emain"]["V3"]["test_id"]["mean"] - math.log(0.8)) < 1e-9
+    assert abs(s4["e1"]["difference"]["mean"] - math.log(0.8)) < 1e-9
+    assert abs(s4["e1"]["emain"]["mean"] - math.log(0.9)) < 0.02
+    assert res["S1"]["missing"] == ["V3"] and res["S1"]["vs_emain"] == {}
+    assert res["S3"]["vs_emain"] == {} and res["S3"]["missing"] == []
+    text = (tmp_path / "tables" / "controls.md").read_text(encoding="utf-8")
+    assert "| S4 | V3 |" in text and "Incomplete" in text and "S1: V3" in text
