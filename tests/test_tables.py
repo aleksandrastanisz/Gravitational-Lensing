@@ -6,7 +6,7 @@ import numpy as np
 from src.evaluation import stats as S
 from src.evaluation.tables import SEEDS, VARIANTS, build, run_name, set_file
 
-KEYS = ("m1", "m1b", "m2", "m3", "m4", "m4b_centroid_mas", "m4b_flux", "m5_arc",
+KEYS = ("m1", "m1b", "m1c", "mst_lambda", "m2", "m3", "m4", "m4b_centroid_mas", "m4b_flux", "m5_arc",
         "m5_global", "m5_arc_oracle", "m5_global_oracle", "m6")
 SETS = ["test_id"] + S.E1_SETS + ["ood/A2_L1", "ood/A2_L3", "diag/Kneg_L1"]
 

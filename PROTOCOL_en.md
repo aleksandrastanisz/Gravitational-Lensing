@@ -162,6 +162,7 @@ All computed **per sample** (not as averages of batch means), on the 128×128 gr
 | ID | Definition |
 |---|---|
 | M1b | as M1, after subtracting the mean deflection-error vector in the band from the error (denominator unchanged; removes the degeneracy with source translation) |
+| M1c | as M1, after removing from the deflection error the best-fitting mass-sheet transformation and constant offset in the band: the prediction is compared with `λ·α_true + (1−λ)·θ + c`, with λ and c fitted per sample by least squares (denominator unchanged); the fitted λ is reported. Exploratory diagnostic of how much of the error lies along directions the image cannot constrain |
 | M3 | `relL2(ψ)` after removing the constant (gauge-fixed) |
 | M4 | `relL2(α)` over the full field (for comparison with M1) |
 | M4b | source centroid error [mas]: flux-weighted centroid of the prediction vs that of the true source image, both inside the M2 aperture; flux error `F_pred/F_true − 1` in the same aperture, reported as the median (bias) and the median of its absolute value (scatter) |
@@ -289,6 +290,7 @@ Conclusions concern: synthetic data from the family in §5.2, the six axes in §
 | 2026-11-14 | Trainer after tuning: git state read once per process (the code actually executed), validation components `val_src` and `val_alpha` logged next to `val_select`, `scripts/train.py` gains `--chi2_mode`, `--sigma_mode`, `--data_root` for S1, S3 and S4 | Provenance and interpretation; the criterion `val_select` is computed per sample exactly as before (verified by test) | None; applies to E-main and later runs |
 | 2026-11-16 | §15 item 5 corrected with measured noise statistics of the validation set (peak S/N per pixel, photon-to-background ratio, arc area) | The previous description of the noise regime was qualitative; the measured photon-to-background ratio at the image peak is about 6.5, and the data are in a high signal-to-noise regime | None on data, hypotheses or decision rules; limits the interpretation of axis A5 and of the realism of the simulations (§12) |
 | 2026-11-16 | X5 added to §9: parametric reference fit on 50 test-ID samples and their A2, A3, A4 counterparts, with sample set, number of starts and selection rule fixed in advance. A demonstration on a real lens is deliberately not included | A reader will ask how the network compares with conventional parametric modelling; registered before any test-set result. Real images contain lens light and have much lower signal-to-noise ratio than the training family, so a failure there would not bear on the research question (§12) | Exploratory; no effect on H1–H3 |
+| 2026-11-16 | Exploratory metric M1c and the fitted mass-sheet factor λ added to §8 | The mass-sheet degeneracy was listed in §3 as uncorrected; the diagnostic measures whether it matters. Added before any test-set evaluation; implementation verified by a test with a known λ | Exploratory; M1 and the decision rules are unchanged |
 
 ## 14. Reproducibility
 

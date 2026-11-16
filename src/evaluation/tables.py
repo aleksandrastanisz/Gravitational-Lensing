@@ -188,7 +188,8 @@ def build(metrics_root="results/metrics", out_dir="results/tables", tuning="resu
     h, rows = ratio_table(metrics_root, S.REF_N, S.E1_SETS)
     md += [f"## Generalization ratio R = M1[axis] / M1[ID], N = {S.REF_N}", "", md_table(h, rows), ""]
 
-    for metric, title in [("m1b", "M1b"), ("m2", "M2"), ("m3", "M3"), ("m4", "M4"),
+    for metric, title in [("m1b", "M1b"), ("m1c", "M1c (mass-sheet and offset removed)"),
+                          ("mst_lambda", "Fitted mass-sheet factor λ"), ("m2", "M2"), ("m3", "M3"), ("m4", "M4"),
                           ("m4b_centroid_mas", "M4b centroid [mas]"), ("m4b_flux", "M4b flux (bias)"),
                           ("m4b_flux_abs", "M4b flux (|error|)")]:
         h, rows, rh, raw = metric_table(metrics_root, metric, S.REF_N, MAIN_SETS)

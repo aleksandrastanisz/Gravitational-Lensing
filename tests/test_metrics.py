@@ -30,7 +30,7 @@ def _m(pred_psi, pred_src, b):
 def test_perfect_prediction():
     b = _batch()
     m = _m(b["psi"], b["source"], b)
-    for k in ("m1", "m1b", "m2", "m3", "m4", "m4b_centroid_mas", "m4b_flux"):
+    for k in ("m1", "m1b", "m1c", "m2", "m3", "m4", "m4b_centroid_mas", "m4b_flux"):
         assert m[k].abs().max() < 1e-5, (k, m[k])
     assert (m["m6"] == 0).all(), m["m6"]          # kappa >= 0 holds for the ID family
     assert ((m["m5_global"] > 0.5) & (m["m5_global"] < 2.0)).all(), m["m5_global"]
@@ -87,3 +87,15 @@ def test_ring_band_area_for_circular_lens():
     pix = (2 * CFG.extent / (CFG.grid_size - 1)) ** 2
     expected = math.pi * (1.5 ** 2 - 0.5 ** 2) / pix
     assert abs(band.sum().item() / expected - 1) < 0.03, (band.sum().item(), expected)
+
+
+def test_m1c_removes_mass_sheet_and_recovers_lambda():
+    b = _batch()
+    x, y = _xy()
+    lam = 0.9
+    pred = lam * b["psi"] + (1 - lam) * 0.5 * (x ** 2 + y ** 2) + 0.03 * x - 0.01 * y
+    m = _m(pred, b["source"], b)
+    assert (m["m1b"] > 0.01).all(), m["m1b"]
+    assert m["m1c"].max() < 1e-3, m["m1c"]
+    assert torch.allclose(m["mst_lambda"], torch.full_like(m["mst_lambda"], lam), atol=1e-3), m["mst_lambda"]
+    assert (m["m1c"] <= m["m1b"] + 1e-6).all() and (m["m1b"] <= m["m1"] + 1e-6).all()

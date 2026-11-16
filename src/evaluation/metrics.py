@@ -63,6 +63,27 @@ def _m1b(pred_psi, true_psi, d, band):
     return field_norm([ex, ey], band) / (field_norm([tx, ty], band) + EPS)
 
 
+def _m1c(pred_psi, true_psi, d, band, n, extent):
+    """M1 after removing the best-fitting mass-sheet transformation and constant offset in the band.
+
+    The deflection error is fitted by e = mu * (theta - alpha_true) + c, i.e. the prediction is
+    compared with lambda * alpha_true + (1 - lambda) * theta + c, lambda = 1 - mu, by least squares
+    over band pixels. Returns the residual norm over the unchanged M1 denominator, and lambda.
+    """
+    ex, ey, tx, ty = alpha_fields(pred_psi, true_psi, d)
+    x, y = _grid(n, extent, pred_psi.device)
+    m = band.to(ex.dtype)
+    cnt = m.sum((-2, -1)).clamp_min(1.0)
+    mean = lambda f: ((f * m).sum((-2, -1)) / cnt)[:, None, None]
+    gx, gy = x - tx, y - ty
+    gx, gy, ex, ey = gx - mean(gx), gy - mean(gy), ex - mean(ex), ey - mean(ey)
+    num = ((gx * ex + gy * ey) * m).sum((-2, -1))
+    den = ((gx * gx + gy * gy) * m).sum((-2, -1)).clamp_min(EPS)
+    mu = (num / den)[:, None, None]
+    res = field_norm([ex - mu * gx, ey - mu * gy], band) / (field_norm([tx, ty], band) + EPS)
+    return res, 1.0 - mu[:, 0, 0]
+
+
 def _m3(pred_psi, true_psi):
     """relL2(psi) after removing the constant (grid mean) from both."""
     p = pred_psi - pred_psi.mean((-2, -1), keepdim=True)
@@ -118,12 +139,15 @@ def sample_metrics(pred_psi, pred_src, batch, extent=3.0, psf_fwhm=0.10, gain=50
     m5_arc, m5_glob = _chi2(img, obs, estimate_sigma(obs, gain), arc)
     m5_arc_or, m5_glob_or = _chi2(img, obs, batch["noise_map"], arc)
 
+    m1c, mst_lambda = _m1c(pred_psi, true_psi, d, band, n, extent)
+
     kappa = PoissonSolver2D(extent=extent).to(pred_psi.device)(pred_psi)
     kappa = kappa[..., BORDER:-BORDER, BORDER:-BORDER]
 
     out = dict(
         m1=alpha_rel_l2(pred_psi, true_psi, d, band),
         m1b=_m1b(pred_psi, true_psi, d, band),
+        m1c=m1c, mst_lambda=mst_lambda,
         m2=rel_l2(pred_src, true_src, ap),
         m3=_m3(pred_psi, true_psi),
         m4=alpha_rel_l2(pred_psi, true_psi, d),

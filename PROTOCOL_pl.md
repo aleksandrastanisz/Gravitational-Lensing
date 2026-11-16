@@ -162,6 +162,7 @@ Wszystkie liczone **per próbka** (nie jako średnie z batchy), na siatce 128×1
 | ID | Definicja |
 |---|---|
 | M1b | jak M1, po odjęciu od błędu średniego wektora błędu ugięcia w pasie (mianownik bez zmian; usuwa degenerację z translacją źródła) |
+| M1c | jak M1, po usunięciu z błędu ugięcia najlepiej dopasowanej transformacji mass-sheet i stałego przesunięcia w pasie: predykcja jest porównywana z `λ·α_true + (1−λ)·θ + c`, gdzie λ i c są dopasowane dla każdej próbki metodą najmniejszych kwadratów (mianownik bez zmian); raportujemy też dopasowane λ. Eksploracyjna diagnostyka tego, ile błędu leży wzdłuż kierunków, których obraz nie rozróżnia |
 | M3 | `relL2(ψ)` po usunięciu stałej (gauge-fixed) |
 | M4 | `relL2(α)` na całym polu (do porównania z M1) |
 | M4b | błąd centroidu źródła [mas]: centroid predykcji ważony strumieniem względem centroidu prawdziwego obrazu źródła, oba w aperturze M2; błąd strumienia `F_pred/F_true − 1` w tej samej aperturze, raportowany jako mediana (obciążenie) i mediana wartości bezwzględnej (rozrzut) |
@@ -289,6 +290,7 @@ Wnioski dotyczą: danych syntetycznych z rodziny §5.2, sześciu osi z §6, arch
 | 2026-11-14 | Trainer po strojeniu: stan gita odczytywany raz na proces (kod faktycznie wykonywany), składowe walidacji `val_src` i `val_alpha` zapisywane obok `val_select`, `scripts/train.py` dostaje `--chi2_mode`, `--sigma_mode`, `--data_root` dla S1, S3 i S4 | Pochodzenie wyników i interpretacja; kryterium `val_select` liczone na próbkę dokładnie jak wcześniej (sprawdzone testem) | Brak; dotyczy E-main i późniejszych przebiegów |
 | 2026-11-16 | Korekta §15 pkt 5 o zmierzone statystyki szumu zbioru walidacyjnego (szczytowy S/N na piksel, stosunek szumu fotonowego do tła, powierzchnia łuku) | Wcześniejszy opis reżimu szumu był jakościowy i podawał czynnik 2–3; zmierzony stosunek w szczycie obrazu to około 6,5, a dane leżą w reżimie wysokiego stosunku sygnału do szumu | Brak wpływu na dane, hipotezy i reguły decyzyjne; ogranicza interpretację osi A5 i realizmu symulacji (§12) |
 | 2026-11-16 | Dodanie X5 do §9: parametryczne dopasowanie odniesienia na 50 próbkach test ID i ich odpowiednikach z A2, A3, A4, z ustalonym z góry zestawem próbek, liczbą startów i regułą wyboru. Pokaz na prawdziwej soczewce celowo nie jest włączony | Czytelnik zapyta, jak sieć wypada wobec klasycznego modelowania parametrycznego; zarejestrowane przed jakimkolwiek wynikiem testowym. Prawdziwe obrazy zawierają światło soczewki i mają znacznie niższy stosunek sygnału do szumu niż rodzina treningowa, więc porażka na nich nie dotyczyłaby pytania badawczego (§12) | Eksploracyjne; bez wpływu na H1–H3 |
+| 2026-11-16 | Dodanie do §8 eksploracyjnej metryki M1c i dopasowanego współczynnika mass-sheet λ | Degeneracja mass-sheet była w §3 opisana jako nieusuwana; diagnostyka mierzy, czy ma znaczenie. Dodane przed jakąkolwiek ewaluacją testową; implementacja sprawdzona testem o znanym λ | Eksploracyjne; M1 i reguły decyzyjne bez zmian |
 
 ## 14. Reprodukowalność
 
