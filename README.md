@@ -6,7 +6,7 @@ A controlled study of whether physical constraints in the loss of a Fourier Neur
 
 The study follows a protocol frozen before the first training run: [`PROTOCOL_en.md`](PROTOCOL_en.md) (Polish version: [`PROTOCOL_pl.md`](PROTOCOL_pl.md)). Every change made after freezing is logged in §13 of the protocol.
 
-**Status:** work in progress. Hyperparameter tuning is running; no results yet.
+**Status:** work in progress. Hyperparameter tuning is finished and the main experiment is running. The test sets have not been evaluated yet; there are no results.
 
 ---
 
@@ -42,6 +42,8 @@ Synthetic data only: an isothermal elliptical-potential lens with external shear
 
 OOD sets are used only in the final evaluation, never for tuning or checkpoint selection.
 
+A separate diagnostic axis, Kneg, mirrors A3 with the sign of the substructure reversed, so that the true convergence is negative in places and the positivity constraint is wrong. It is reported on its own and does not enter the primary endpoint.
+
 ## Variants
 
 All variants share one FNO (modes 32, width 64), one dataset and one procedure: 12 500 AdamW steps with OneCycleLR, batch 16. Physics terms are switched on gradually between steps 1 500 and 3 000.
@@ -53,7 +55,7 @@ All variants share one FNO (modes 32, width 64), one dataset and one procedure: 
 | V2 | `L_sup + λ_ray·L_ray` | adds ray-tracing consistency with the observation (pseudo-Huber on the noise-normalized residual) |
 | V3 | `L_sup + λ_ray·L_ray + λ_pos·L_pos` | both constraints |
 
-λ_ray, λ_pos, learning rate and weight decay are tuned on the validation set with an equal budget for every variant (protocol §7.1); the selected values will be stored in `configs/tuned.yaml`. Five seeds (42–46) per variant and N, paired across variants.
+λ_ray, λ_pos, learning rate and weight decay are tuned on the validation set with an equal budget for every variant (protocol §7.1); the selected values are stored in `configs/tuned.yaml`. Five seeds (42–46) per variant and N, paired across variants.
 
 ## Metrics
 
@@ -63,6 +65,7 @@ Computed per sample on the 128×128 grid (protocol §8):
 |---|---|
 | M1 | relative deflection error in the band \|r_ell − θ_E\| < 0.5″ around the true Einstein ring |
 | M1b | as M1, after removing the mean deflection-error vector in the band (a constant offset is degenerate with a source shift) |
+| M1c | as M1, after also removing the best-fitting mass-sheet transformation in the band (exploratory) |
 | M2 | relative source error within 1.0″ of the true source centre |
 | M3 | relative potential error after removing the constant in ψ |
 | M4 | relative deflection error over the full field |
@@ -72,17 +75,24 @@ Computed per sample on the 128×128 grid (protocol §8):
 
 M5 and M6 favour the variants that optimize these quantities and are reported separately.
 
+## Control experiments
+
+Descriptive controls, specified in §9 of the protocol, are run after the final evaluation: sensitivity to the form of the χ² term (S1), to the architecture with a U-Net of matching size (S2), to the noise estimate (S3) and to the mismatch between `A_truth` and `A_model` (S4); and exploratory runs X1–X5, including a non-physical smoothness penalty (X4, only if H1 is supported) and a conventional parametric fit as a reference point (X5).
+
 ## Repository layout
 
 ```
 configs/prior.yaml        parameter ranges of the training family
+configs/tuned.yaml        hyperparameters selected by tuning
 src/physics/              profiles, ray tracer, operators, noise, Poisson solver
-src/data/                 generator (ID and OOD), splits, on-disk storage
+src/data/                 generator (ID, OOD, diagnostic and S4), splits, on-disk storage
 src/losses/               L_sup, L_ray, L_pos and variants V0–V3
-src/models/               FNO and spectral convolution
+src/models/               FNO, spectral convolution, U-Net for control S2
 src/training/trainer.py   training loop, checkpoint selection, run metadata
-src/evaluation/           metrics M1–M6
-scripts/                  dataset generation, training, tuning, E-main
+src/evaluation/           metrics, per-run evaluation, statistics of §10, tables, figures
+src/fitting/              parametric reference fit (X5)
+scripts/                  dataset generation, tuning, experiments, evaluation, tables, figures
+results/tuning.json       validation results of the 36 tuning runs
 tests/                    unit tests
 ```
 
@@ -116,8 +126,9 @@ One training run takes about 72 minutes on a GTX 1660: about 43 h for tuning and
 ## Reproducibility
 
 - Datasets are regenerated bit for bit from their seeds; `meta.json` in each dataset stores the checksums and the hash of `configs/prior.yaml`.
-- Each run stores its configuration, best `val_select`, git commit and dirty flag (read at the start of the run), PyTorch version and GPU name in `runs/<name>/meta.json`.
-- GPU training is not bitwise deterministic; repeated runs with the same seed can differ slightly.
+- Each run stores its configuration, best `val_select`, git commit and dirty flag (read once when the training process starts), PyTorch version and GPU name in `runs/<name>/meta.json`.
+- The main datasets were generated with PyTorch 2.15.0 (CPU) and everything else with the pinned 2.6.0+cu124; `scripts/check_dataset_regeneration.py` confirms that the pinned version reproduces the stored arrays bit for bit.
+- GPU training is not bitwise deterministic; repeated runs with the same seed can differ slightly. Control X3 measures the size of this effect.
 
 ## Citation and license
 
