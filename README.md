@@ -132,4 +132,4 @@ One training run takes about 72 minutes on a GTX 1660: about 43 h for tuning and
 
 ## Citation and license
 
-To cite the project, use [10.5281/zenodo.24164618](https://doi.org/10.5281/zenodo.24164618) (all versions). The frozen protocol and the code before any test-set evaluation are archived as version `protocol-v1.0` ([10.5281/zenodo.24164619](https://doi.org/10.5281/zenodo.24164619)) and, with the code used for the final evaluation, as version `protocol-v1.2`. See `LICENSE` for the license terms.
+To cite the project, use [10.5281/zenodo.24164618](https://doi.org/10.5281/zenodo.24164618) (all versions). The frozen protocol and the code before any test-set evaluation are archived as version `protocol-v1.0` ([10.5281/zenodo.24164619](https://doi.org/10.5281/zenodo.24164619)) and, with the code used for the final evaluation, as version `protocol-v1.2` ([10.5281/zenodo.24312573](https://doi.org/10.5281/zenodo.24312573)). See `LICENSE` for the license terms.
