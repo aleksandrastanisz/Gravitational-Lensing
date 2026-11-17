@@ -6,7 +6,7 @@ A controlled study of whether physical constraints in the loss of a Fourier Neur
 
 The study follows a protocol frozen before the first training run: [`PROTOCOL_en.md`](PROTOCOL_en.md) (Polish version: [`PROTOCOL_pl.md`](PROTOCOL_pl.md)). Every change made after freezing is logged in §13 of the protocol.
 
-**Status:** work in progress. Hyperparameter tuning is finished and the main experiment is running. The test sets have not been evaluated yet; there are no results.
+**Status:** work in progress. Tuning and the main experiment (60 runs) are finished. The test sets have not been evaluated yet; there are no results.
 
 ---
 
@@ -132,4 +132,4 @@ One training run takes about 72 minutes on a GTX 1660: about 43 h for tuning and
 
 ## Citation and license
 
-To cite the project, use [10.5281/zenodo.24164618](https://doi.org/10.5281/zenodo.24164618) (all versions). The frozen protocol and the code before any test-set evaluation are archived as version `protocol-v1.0`: [10.5281/zenodo.24164619](https://doi.org/10.5281/zenodo.24164619). See `LICENSE` for the license terms.
+To cite the project, use [10.5281/zenodo.24164618](https://doi.org/10.5281/zenodo.24164618) (all versions). The frozen protocol and the code before any test-set evaluation are archived as version `protocol-v1.0` ([10.5281/zenodo.24164619](https://doi.org/10.5281/zenodo.24164619)) and, with the code used for the final evaluation, as version `protocol-v1.2`. See `LICENSE` for the license terms.
