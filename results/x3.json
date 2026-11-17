@@ -1,0 +1,24 @@
+[
+ {
+  "variant": "V0",
+  "lr": 0.003,
+  "wd": 0.001,
+  "val_select_tuning": 0.4673252999782562,
+  "val_select_repeat": 0.46821919083595276,
+  "relative_difference": 0.0019127807926044849,
+  "step_tuning": 10500,
+  "step_repeat": 12000
+ },
+ {
+  "variant": "V3",
+  "lr": 0.003,
+  "wd": 0.001,
+  "lambda_ray": 0.02,
+  "lambda_pos": 15,
+  "val_select_tuning": 0.445993036031723,
+  "val_select_repeat": 0.4451308250427246,
+  "relative_difference": -0.0019332386816396374,
+  "step_tuning": 12500,
+  "step_repeat": 12000
+ }
+]
