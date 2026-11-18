@@ -48,3 +48,33 @@ def test_val_select_total_matches_supervised_loss_and_components():
 
 def test_git_state_is_read_once_per_process():
     assert process_git_state() is process_git_state()
+
+
+def test_build_model_keeps_the_fno_of_the_main_runs():
+    from src.models.unet_reconstructor import UNetLensingReconstructor, count_real_params
+    from src.training.trainer import build_model
+    import pytest
+
+    torch.manual_seed(0)
+    a = build_model("fno")
+    torch.manual_seed(0)
+    b = FNOLensingReconstructor(modes=32, width=64, pad_ratio=0.25)
+    assert all(torch.equal(x, y) for x, y in zip(a.state_dict().values(), b.state_dict().values()))
+    assert TrainConfig("V0", 2000, 42).arch == "fno"
+    assert isinstance(build_model("unet"), UNetLensingReconstructor)
+    assert count_real_params(build_model("unet")) == 70_029_634
+    with pytest.raises(ValueError):
+        build_model("resnet")
+
+
+def test_runs_stored_before_the_arch_field_still_match_their_config():
+    from dataclasses import asdict
+    from src.training.trainer import same_config
+
+    c = TrainConfig("V3", 2000, 42, lr=3e-3, wd=1e-3)
+    old = asdict(c)
+    del old["arch"]
+    assert same_config(old, c) and same_config(asdict(c), c)
+    assert not same_config(old, TrainConfig("V3", 2000, 42, lr=3e-3, wd=1e-3, arch="unet"))
+    assert not same_config(dict(old, lr=1e-3), c)
+    assert not same_config(dict(old, unknown=1), c)

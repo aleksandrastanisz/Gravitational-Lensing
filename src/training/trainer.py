@@ -3,7 +3,7 @@ import json
 import math
 import subprocess
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import MISSING, asdict, dataclass, fields
 from pathlib import Path
 
 import numpy as np
@@ -43,6 +43,25 @@ class TrainConfig:
     out_root: str = "runs"
     tag: str = ""
     save_ckpt: bool = True
+    arch: str = "fno"          # "fno" (all main runs) or "unet" (control S2)
+
+
+def build_model(arch: str = "fno"):
+    """The reconstructor for a run. The FNO is constructed exactly as before the arch option existed."""
+    if arch == "fno":
+        return FNOLensingReconstructor(modes=32, width=64, pad_ratio=0.25)
+    if arch == "unet":
+        from src.models.unet_reconstructor import UNetLensingReconstructor
+        return UNetLensingReconstructor()
+    raise ValueError(f"unknown architecture {arch!r}")
+
+
+def same_config(saved: dict, c: "TrainConfig") -> bool:
+    """True if a stored run config equals c; a field missing from an older run counts as its default."""
+    defaults = {f.name: f.default for f in fields(TrainConfig) if f.default is not MISSING}
+    cur = asdict(c)
+    return set(saved) <= set(cur) and all((saved[k] if k in saved else defaults.get(k, object())) == v
+                                          for k, v in cur.items())
 
 
 def warm(step: int, c: TrainConfig) -> float:
@@ -115,7 +134,7 @@ def run(c: TrainConfig, device=None):
     out = Path(c.out_root) / run_name(c)
     if (out / "meta.json").exists():
         meta = json.loads((out / "meta.json").read_text())
-        if meta["train"] != asdict(c):
+        if not same_config(meta["train"], c):
             raise RuntimeError(f"{run_name(c)}: existing run has different config (delete {out} or change tag)")
         return meta
     out.mkdir(parents=True, exist_ok=True)
@@ -124,10 +143,12 @@ def run(c: TrainConfig, device=None):
     gpu = torch.cuda.get_device_name(device) if device.type == "cuda" else None
     cfg = SimulationConfig.from_yaml()
 
+    # cuDNN autotuning only for the U-Net (S2): about 1.7x faster there; FNO runs keep the E-main setting.
+    torch.backends.cudnn.benchmark = c.arch == "unet"
     torch.manual_seed(c.seed)
     if device.type == "cuda":
         torch.cuda.manual_seed_all(c.seed)
-    model = FNOLensingReconstructor(modes=32, width=64, pad_ratio=0.25).to(device)
+    model = build_model(c.arch).to(device)
     criterion = LensingLoss(
         loss_config(c.variant, c.lambda_ray, c.lambda_pos, chi2_mode=c.chi2_mode, sigma_mode=c.sigma_mode),
         extent=cfg.extent, psf_fwhm=cfg.psf_fwhm, gain=cfg.gain).to(device)
@@ -179,6 +200,7 @@ def run(c: TrainConfig, device=None):
     meta = dict(
         train=asdict(c), best=best_rec, seconds=time.perf_counter() - t0, eval_seconds=eval_sec,
         prior_sha256=hashlib.sha256(Path("configs/prior.yaml").read_bytes()).hexdigest(),
-        commit=commit, git_dirty=dirty, torch=torch.__version__, device=str(device), gpu=gpu)
+        commit=commit, git_dirty=dirty, torch=torch.__version__, device=str(device), gpu=gpu,
+        cudnn_benchmark=torch.backends.cudnn.benchmark)
     (out / "meta.json").write_text(json.dumps(meta, indent=1))
     return meta

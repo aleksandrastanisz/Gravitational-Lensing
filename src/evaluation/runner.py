@@ -12,8 +12,7 @@ import torch
 
 from src.data.store import NpyDataset, verify_dataset
 from src.evaluation.metrics import sample_metrics
-from src.models.fno_reconstructor import FNOLensingReconstructor
-from src.training.trainer import _git_state
+from src.training.trainer import _git_state, build_model
 
 KEYS = ("observed", "clean_lensed", "source", "psi", "noise_map", "params")
 
@@ -32,7 +31,9 @@ def datasets(root, final):
 
 
 def load_model(run_dir, device):
-    model = FNOLensingReconstructor(modes=32, width=64, pad_ratio=0.25).to(device)
+    """Checkpoint of a run, with the architecture recorded in its meta.json (FNO if not recorded)."""
+    arch = json.loads((Path(run_dir) / "meta.json").read_text())["train"].get("arch", "fno")
+    model = build_model(arch).to(device)
     state = torch.load(Path(run_dir) / "best.pt", map_location=device, weights_only=True)
     model.load_state_dict(state)
     return model.eval()
