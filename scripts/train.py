@@ -2,7 +2,7 @@ import argparse
 from src.training.trainer import TrainConfig, run
 
 p = argparse.ArgumentParser()
-p.add_argument("--variant", required=True, choices=["V0", "V1", "V2", "V3"])
+p.add_argument("--variant", required=True, choices=["V0", "V1", "V2", "V3", "V4", "R"])
 p.add_argument("--n", type=int, required=True)
 p.add_argument("--seed", type=int, required=True)
 p.add_argument("--steps", type=int, default=12_500)
@@ -18,11 +18,13 @@ p.add_argument("--chi2_mode", default="huber", choices=["huber", "clamp"])
 p.add_argument("--sigma_mode", default="est", choices=["est", "oracle"])
 p.add_argument("--data_root", default="data")
 p.add_argument("--arch", default="fno", choices=["fno", "unet"])
+p.add_argument("--lambda_r", type=float, default=0.0)
+p.add_argument("--phys_pool", type=int, default=0)
 a = p.parse_args()
 
 meta = run(TrainConfig(a.variant, a.n, a.seed, a.lr, a.wd, a.lambda_ray, a.lambda_pos,
                        steps=a.steps, eval_every=a.eval_every,
                        warm_start=a.warm_start, warm_len=a.warm_len, tag=a.tag,
                        chi2_mode=a.chi2_mode, sigma_mode=a.sigma_mode, data_root=a.data_root,
-                       arch=a.arch))
+                       arch=a.arch, lambda_r=a.lambda_r, phys_pool=a.phys_pool))
 print(meta["best"], f"{meta['seconds']:.0f}s")

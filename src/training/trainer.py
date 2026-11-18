@@ -44,6 +44,8 @@ class TrainConfig:
     tag: str = ""
     save_ckpt: bool = True
     arch: str = "fno"          # "fno" (all main runs) or "unet" (control S2)
+    lambda_r: float = 0.0      # X4 only
+    phys_pool: int = 0         # X2 only: L_ray and L_pos on batches from the first phys_pool training samples
 
 
 def build_model(arch: str = "fno"):
@@ -65,6 +67,9 @@ def same_config(saved: dict, c: "TrainConfig") -> bool:
 
 
 def warm(step: int, c: TrainConfig) -> float:
+    """Ramp of the regularizing terms. V4 has no supervised term, so it has nothing to warm up from."""
+    if c.variant == "V4":
+        return 1.0
     return min(max((step - c.warm_start) / c.warm_len, 0.0), 1.0)
 
 
@@ -149,9 +154,19 @@ def run(c: TrainConfig, device=None):
     if device.type == "cuda":
         torch.cuda.manual_seed_all(c.seed)
     model = build_model(c.arch).to(device)
-    criterion = LensingLoss(
-        loss_config(c.variant, c.lambda_ray, c.lambda_pos, chi2_mode=c.chi2_mode, sigma_mode=c.sigma_mode),
-        extent=cfg.extent, psf_fwhm=cfg.psf_fwhm, gain=cfg.gain).to(device)
+    loss_kw = dict(extent=cfg.extent, psf_fwhm=cfg.psf_fwhm, gain=cfg.gain)
+    mode = dict(chi2_mode=c.chi2_mode, sigma_mode=c.sigma_mode)
+    pool, phys = None, None
+    if c.phys_pool:
+        # X2: L_sup on the labelled batch, L_ray and L_pos on a second batch from the larger pool
+        assert c.variant == "V3" and c.phys_pool >= c.n_train, "phys_pool is defined for V3 only"
+        criterion = LensingLoss(loss_config("V0", 0.0, 0.0, **mode), **loss_kw).to(device)
+        phys = LensingLoss(loss_config("V4", c.lambda_ray, c.lambda_pos, **mode), **loss_kw).to(device)
+        pool = batches(NpyDataset(f"{c.data_root}/train", n=c.phys_pool), c.batch, c.seed + 100_003,
+                       ("observed", "noise_map"))
+    else:
+        criterion = LensingLoss(loss_config(c.variant, c.lambda_ray, c.lambda_pos, lambda_r=c.lambda_r, **mode),
+                                **loss_kw).to(device)
     opt = AdamW(model.parameters(), lr=c.lr, weight_decay=c.wd)
     sched = OneCycleLR(opt, max_lr=c.lr, total_steps=c.steps)
 
@@ -168,6 +183,13 @@ def run(c: TrainConfig, device=None):
         loss, terms = criterion(psi, src, b, warm(step, c))
         opt.zero_grad(set_to_none=True)
         loss.backward()
+        if pool is not None:
+            u = to_dev(next(pool), device)
+            psi_u, src_u = model(u["observed"])
+            loss_u, terms_u = phys(psi_u, src_u, u, warm(step, c))
+            if loss_u.requires_grad:
+                loss_u.backward()
+            terms = {**terms, **terms_u}
         torch.nn.utils.clip_grad_norm_(model.parameters(), c.clip)
         opt.step()
         sched.step()

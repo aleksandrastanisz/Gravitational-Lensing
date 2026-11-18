@@ -78,3 +78,24 @@ def test_controls_compare_with_emain_counterparts(tmp_path):
     assert res["S3"]["vs_emain"] == {} and res["S3"]["missing"] == []
     text = (tmp_path / "tables" / "controls.md").read_text(encoding="utf-8")
     assert "| S4 | V3 |" in text and "Incomplete" in text and "S1: V3" in text
+
+
+def test_variants_without_counterpart_are_compared_with_emain_v0_and_v3(tmp_path):
+    from src.evaluation.controls import build as build_controls
+
+    root = tmp_path / "metrics"
+    _fake_results(root, factor_v3=0.9)
+    for s in SEEDS:                                   # control X4: R is 5% better than V3 of the same seed
+        for a in SETS:
+            src = np.load(set_file(root, run_name("V3", 2_000, s), a))
+            p = set_file(root, run_name("R", 2_000, s, "X4"), a)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            np.savez(p, **{k: src[k] * 0.95 for k in src.files})
+    res = build_controls(root, tmp_path / "tables", tags=("X4",))
+    ref = res["X4"]["vs_reference"]["R"]
+    assert abs(ref["V3"]["e1_axes"]["mean"] - math.log(0.95)) < 1e-9
+    e1_v3 = S.e1(S.load(root, "m1", 2_000, SEEDS, ("V0", "V3"), S.E1_SETS), "V3", SEEDS).mean()
+    assert abs(ref["V0"]["e1_axes"]["mean"] - (math.log(0.95) + e1_v3)) < 1e-9
+    assert res["X4"]["vs_emain"] == {} and "e1" not in res["X4"]
+    text = (tmp_path / "tables" / "controls.md").read_text(encoding="utf-8")
+    assert "| X4 | R | V3 |" in text and "| X4 | R | V0 |" in text

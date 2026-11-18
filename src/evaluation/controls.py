@@ -6,7 +6,9 @@ seeds and the 95% t interval, for the median M1:
 - relative to the E-main counterpart: ln m[control, v, s, a] - ln m[E-main, v, s, a] for the same
   variant, N and seed, on test ID and averaged over the E1 axes with the E1 weights;
 - when the control has both V0 and V3 (S2, S4): E1 of V3 against V0 within the control, next to
-  the E-main E1 of the same seeds, and their difference.
+  the E-main E1 of the same seeds, and their difference;
+- for a variant with no E-main counterpart (V4 in X1, R in X4): the same quantities against the E-main
+  V0 and V3 of the same N and seed.
 
 No hypothesis tests are made.
 """
@@ -49,6 +51,12 @@ def control_summary(root, tag, n=S.REF_N, seeds=SEEDS, metric="m1"):
             continue
         have.append(v)
         if not all((Path(root) / run_name(v, n, s)).exists() for s in seeds):
+            out.setdefault("vs_reference", {})[v] = {
+                ref: dict(test_id=_interval([_log_median(root, run_name(v, n, s, tag), "test_id", metric)
+                                             - _log_median(root, run_name(ref, n, s), "test_id", metric) for s in seeds]),
+                          e1_axes=_interval([_weighted(root, run_name(v, n, s, tag), run_name(ref, n, s), metric)
+                                             for s in seeds]))
+                for ref in ("V0", "V3") if all((Path(root) / run_name(ref, n, s)).exists() for s in seeds)}
             continue                                    # no E-main counterpart (V4, R)
         out["vs_emain"][v] = dict(
             test_id=_interval([_log_median(root, run_name(v, n, s, tag), "test_id", metric)
@@ -67,7 +75,7 @@ def _cell(r):
     return f"{r['mean']:+.4f} [{r['interval'][0]:+.4f}, {r['interval'][1]:+.4f}]"
 
 
-def build(metrics_root="results/metrics", out_dir="results/tables", tags=("S4", "S2", "S1", "S3", "X2")):
+def build(metrics_root="results/metrics", out_dir="results/tables", tags=("S4", "S2", "S1", "S3", "X1", "X2", "X4")):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     res = {t: control_summary(metrics_root, t) for t in tags}
@@ -83,6 +91,11 @@ def build(metrics_root="results/metrics", out_dir="results/tables", tags=("S4", 
     if rows:
         md += ["## E1 (V3 against V0) within the control and in E-main", "",
                md_table(["control", "E1 in control", "E1 in E-main", "difference"], rows), ""]
+    rows = [[t, v, ref, _cell(r["test_id"]), _cell(r["e1_axes"])]
+            for t, c in res.items() for v, refs in c.get("vs_reference", {}).items() for ref, r in refs.items()]
+    if rows:
+        md += ["## Variants without an E-main counterpart, against E-main V0 and V3", "",
+               md_table(["control", "variant", "against", "test ID", "mean over E1 axes"], rows), ""]
     miss = [f"{t}: {', '.join(c['missing'])}" for t, c in res.items() if c["missing"]]
     if miss:
         md += ["Incomplete (not all seeds evaluated): " + "; ".join(miss), ""]

@@ -17,6 +17,7 @@ class LossConfig:
     sigma_mode: str = "est"
     huber_c: float = 10.0
     clamp_max: float = 100.0
+    lambda_r: float = 0.0          # X4: non-physical curvature penalty, 0 everywhere else
 
 
 def sup_per_sample(pred_psi, pred_src, true_psi, true_src, d):
@@ -49,6 +50,11 @@ class LensingLoss(nn.Module):
         kappa = self.poisson(pred_psi)
         return F.relu(-kappa[..., 2:-2, 2:-2]).pow(2).mean()
 
+    def curv(self, pred_psi):
+        """X4: L_R = mean((laplacian psi)^2) on the grid interior, regardless of sign."""
+        lap = 2.0 * self.poisson(pred_psi)
+        return lap[..., 2:-2, 2:-2].pow(2).mean()
+
     def forward(self, pred_psi, pred_src, batch, warm: float = 1.0):
         c, terms, total = self.cfg, {}, pred_psi.new_zeros(())
         if c.use_sup:
@@ -61,12 +67,18 @@ class LensingLoss(nn.Module):
         if c.lambda_pos * warm > 0:
             terms["pos"] = self.pos(pred_psi)
             total = total + c.lambda_pos * warm * terms["pos"]
+        if c.lambda_r * warm > 0:
+            terms["r"] = self.curv(pred_psi)
+            total = total + c.lambda_r * warm * terms["r"]
         return total, {k: v.detach() for k, v in terms.items()}
 
 
-VARIANTS = {"V0": (False, False), "V1": (False, True), "V2": (True, False), "V3": (True, True)}
+# (use_ray, use_pos). V4 (X1) has no supervised term; R (X4) is L_sup + lambda_r * L_R.
+VARIANTS = {"V0": (False, False), "V1": (False, True), "V2": (True, False), "V3": (True, True),
+            "V4": (True, True), "R": (False, False)}
 
 
-def loss_config(variant, lambda_ray, lambda_pos, **kw):
+def loss_config(variant, lambda_ray, lambda_pos, lambda_r=0.0, **kw):
     use_ray, use_pos = VARIANTS[variant]
-    return LossConfig(lambda_ray if use_ray else 0.0, lambda_pos if use_pos else 0.0, **kw)
+    return LossConfig(lambda_ray if use_ray else 0.0, lambda_pos if use_pos else 0.0,
+                      use_sup=variant != "V4", lambda_r=lambda_r if variant == "R" else 0.0, **kw)

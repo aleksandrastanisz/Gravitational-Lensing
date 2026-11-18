@@ -78,3 +78,35 @@ def test_runs_stored_before_the_arch_field_still_match_their_config():
     assert not same_config(old, TrainConfig("V3", 2000, 42, lr=3e-3, wd=1e-3, arch="unet"))
     assert not same_config(dict(old, lr=1e-3), c)
     assert not same_config(dict(old, unknown=1), c)
+
+
+def test_v4_has_no_warm_up_and_other_variants_keep_theirs():
+    assert warm(0, TrainConfig("V4", 2000, 42)) == 1.0
+    assert warm(0, TrainConfig("V3", 2000, 42)) == 0.0 and warm(0, TrainConfig("R", 2000, 42)) == 0.0
+
+
+def _tiny_data(root):
+    from src.data.generator import generate
+    from src.data.store import write_dataset
+    from src.utils.config import SimulationConfig
+
+    cfg = SimulationConfig.from_yaml()
+    write_dataset(root / "train", range(32), cfg, generate)
+    write_dataset(root / "val", range(100_000, 100_008), cfg, generate)
+
+
+def test_control_variants_train_end_to_end_on_cpu(tmp_path):
+    """X1 (V4), X2 (phys_pool) and X4 (R): two optimizer steps each on a tiny generated dataset."""
+    from src.training.trainer import run
+
+    _tiny_data(tmp_path / "data")
+    common = dict(steps=2, eval_every=2, batch=16, warm_start=0, warm_len=1,
+                  data_root=str(tmp_path / "data"), out_root=str(tmp_path / "runs"), save_ckpt=False)
+    cases = {"V4": dict(), "V3": dict(phys_pool=32), "R": dict(lambda_r=0.002)}
+    expected = {"V4": {"ray", "pos"}, "V3": {"sup", "ray", "pos"}, "R": {"sup", "r"}}
+    for v, extra in cases.items():
+        meta = run(TrainConfig(v, 16, 42, **common, **extra, tag="t"), device=torch.device("cpu"))
+        last = __import__("json").loads((tmp_path / "runs" / f"t_{v}_N16_s42" / "history.json").read_text())[-1]
+        assert {k[6:] for k in last if k.startswith("train_")} == expected[v], (v, last)
+        assert np.isfinite(meta["best"]["val_select"])
+        assert meta["train"]["phys_pool"] == extra.get("phys_pool", 0)
