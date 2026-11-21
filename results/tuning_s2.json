@@ -1,0 +1,33 @@
+{
+ "runs": [
+  {
+   "variant": "V0",
+   "arch": "unet",
+   "lr": 0.0003,
+   "wd": 0.001,
+   "val_select": 0.28650209307670593,
+   "step": 12500,
+   "seconds": 8128.106457700022
+  },
+  {
+   "variant": "V0",
+   "arch": "unet",
+   "lr": 0.001,
+   "wd": 0.001,
+   "val_select": 0.2617875635623932,
+   "step": 12500,
+   "seconds": 8666.96148569975
+  },
+  {
+   "variant": "V0",
+   "arch": "unet",
+   "lr": 0.003,
+   "wd": 0.001,
+   "val_select": 0.28795114159584045,
+   "step": 12500,
+   "seconds": 8673.29239670001
+  }
+ ],
+ "selected_lr": 0.001,
+ "position": "interior"
+}
