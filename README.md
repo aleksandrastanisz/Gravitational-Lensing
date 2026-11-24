@@ -6,7 +6,7 @@ A controlled study of whether physical constraints in the loss of a Fourier Neur
 
 The study follows a protocol frozen before the first training run: [`PROTOCOL_en.md`](PROTOCOL_en.md) (Polish version: [`PROTOCOL_pl.md`](PROTOCOL_pl.md)). Every change made after freezing is logged in §13 of the protocol.
 
-**Status:** experiments nearly finished. The main experiment (60 runs) and the single final evaluation are done: H1, H2 and H3 are supported (decisions recorded in §13 of the protocol). Controls S1–S4 and X1–X3 are trained (S2, S4 and X3 evaluated); X4 and X5 are in progress. A summary of results will follow.
+**Status:** experiments nearly finished. The main experiment (60 runs) and the single final evaluation are done: H1, H2 and H3 are supported (decisions recorded in §13 of the protocol). All control runs except X4 are trained. Of these, only S2 and S4 have been evaluated on the test sets so far, and X3 (a repeat of two tuning runs, compared on the validation set) is analysed; X4 and X5 are in progress. A summary of results will follow.
 
 ---
 
