@@ -1,0 +1,86 @@
+{
+ "set": "ood/A2_L2",
+ "n_samples": 50,
+ "n_starts": 8,
+ "steps": 1500,
+ "lr": 0.02,
+ "order": [
+  "theta_e",
+  "q_lens",
+  "x0_lens",
+  "y0_lens",
+  "phi_lens",
+  "gamma1",
+  "gamma2",
+  "amp",
+  "r_eff",
+  "n_src",
+  "x0_src",
+  "y0_src",
+  "q_src",
+  "phi_src"
+ ],
+ "bounds": {
+  "theta_e": [
+   "0.3",
+   "2.5"
+  ],
+  "q_lens": [
+   "0.3",
+   "1.0"
+  ],
+  "x0_lens": [
+   "-0.5",
+   "0.5"
+  ],
+  "y0_lens": [
+   "-0.5",
+   "0.5"
+  ],
+  "phi_lens": [
+   "-inf",
+   "inf"
+  ],
+  "gamma1": [
+   "-0.3",
+   "0.3"
+  ],
+  "gamma2": [
+   "-0.3",
+   "0.3"
+  ],
+  "amp": [
+   "0.01",
+   "10.0"
+  ],
+  "r_eff": [
+   "0.03",
+   "1.5"
+  ],
+  "n_src": [
+   "0.3",
+   "6.0"
+  ],
+  "x0_src": [
+   "-1.5",
+   "1.5"
+  ],
+  "y0_src": [
+   "-1.5",
+   "1.5"
+  ],
+  "q_src": [
+   "0.2",
+   "1.0"
+  ],
+  "phi_src": [
+   "-inf",
+   "inf"
+  ]
+ },
+ "commit": "527be0c6b925fbdc63cf33e15e28bef4fe0851b1",
+ "git_dirty": false,
+ "torch": "2.6.0+cu124",
+ "device": "cuda",
+ "seconds": 192
+}
